@@ -38,8 +38,8 @@ namespace ServerCode
         bool cheater = false;
         bool messageSent = false;
         bool preMessageDeleteMessageSent = false;
-        private string currentPass = "SCAK"; //current code password 4 characters only
-        private string introMessage = "ServerCode6.2 Activated";
+        private string currentPass = "SCAL"; //current code password 4 characters only
+        private string introMessage = "ServerCode7.2 Activated";
         // private bool shipTicker = false;
         // private int shipTicks = 0;
 
@@ -488,18 +488,20 @@ namespace ServerCode
                 Game1.displayHUD = true;
                 Game1.addHUDMessage(new HUDMessage($"{introMessage}", ""));
 
-
-                Game1.chatBox.activate();
+                //old way of sending ids
+                /*Game1.chatBox.activate();
                 Game1.chatBox.setText("/color");
                 Game1.chatBox.chatBox.RecieveCommandInput('\r');
-
                 Game1.chatBox.activate();
                 Game1.chatBox.setText($"{currentPass}{playerID}"); 
-                Game1.chatBox.chatBox.RecieveCommandInput('\r');
+                Game1.chatBox.chatBox.RecieveCommandInput('\r');*/
+
+                string myStringMessage = $"{currentPass}{playerID}";
+                Game1.client.sendMessage((byte)18, myStringMessage);
 
 
 
-                
+
                 //delete last line so we dont see ID
                 List<ChatMessage> messages = this.Helper.Reflection.GetField<List<ChatMessage>>(Game1.chatBox, "messages").GetValue();
                 int currentMessage = messages.Count - 1;
@@ -522,9 +524,8 @@ namespace ServerCode
                 Game1.chatBox.activate();
                 Game1.chatBox.setText("ServerCode Sent");
                 Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                Game1.chatBox.activate();
-                Game1.chatBox.setText($"{currentPass}{playerID}");
-                Game1.chatBox.chatBox.RecieveCommandInput('\r');
+                string myStringMessage = $"{currentPass}{playerID}";
+                Game1.client.sendMessage((byte)18, myStringMessage);
                 preMessageDeleteMessageSent = true;
             }
 

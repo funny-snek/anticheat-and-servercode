@@ -1,27 +1,26 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using StardewModdingAPI;
-using StardewValley.Menus;
 using StardewModdingAPI.Events;
 using StardewValley;
-using System.Collections.Generic;
-using System.Linq;
 using StardewValley.Network;
-using System.IO;
-using Microsoft.Xna.Framework.Input;
-using StardewModdingAPI.Utilities;
-using StardewValley.Locations;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using StardewValley.Characters;
 
 namespace FunnySnek.AntiCheat.Server
 {
-
-    //harmony patch for kick
-    class Server_sendMessage_Patcher : Patch
+    /// <summary>Harmony patch for kick.</summary>
+    internal class Server_SendMessage_Patcher : Patch
     {
+        /*********
+        ** Properties
+        *********/
         protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(GameServer), "sendMessage", new System.Type[] { typeof(long), typeof(OutgoingMessage) });
 
+
+        /*********
+        ** Public methods
+        *********/
         public static bool Prefix(long peerId)
         {
             if (Game1.IsServer && (!Game1.otherFarmers.ContainsKey(peerId)))
@@ -34,12 +33,18 @@ namespace FunnySnek.AntiCheat.Server
         }
     }
 
-    //harmony patch for making sure no messages are received from client
-    
-    class Multiplayer_processIncomingMessage_Patcher : Patch
+    /// <summary>Harmony patch for making sure no messages are received from client.</summary>
+    internal class Multiplayer_ProcessIncomingMessage_Patcher : Patch
     {
+        /*********
+        ** Properties
+        *********/
         protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(Multiplayer), "processIncomingMessage");
 
+
+        /*********
+        ** Public methods
+        *********/
         public static bool Prefix(IncomingMessage msg)
         {
             if (Game1.IsServer && (msg == null || !Game1.otherFarmers.ContainsKey(msg.FarmerID)))
@@ -50,10 +55,18 @@ namespace FunnySnek.AntiCheat.Server
             return true;
         }
     }
-    class parseServerToClientsMessage_Patcher : Patch  //this totally works!
+
+    internal class Multiplayer_ParseServerToClientsMessage_Patcher : Patch  //this totally works!
     {
+        /*********
+        ** Properties
+        *********/
         protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(Multiplayer), "parseServerToClientsMessage");
 
+
+        /*********
+        ** Public methods
+        *********/
         public static void Prefix(string message) //not sure how to do this line?
         {
             if (message.Substring(0, 4) == "SCAZ")//currentpass
@@ -89,33 +102,21 @@ namespace FunnySnek.AntiCheat.Server
         }
     }
 
-
-    
-
-
-
-
-    public class ModEntry : Mod
+    internal class ModEntry : Mod
     {
+        /*********
+        ** Properties
+        *********/
         private int connectedFarmersCount = Game1.otherFarmers.Count;
         private long[] newPlayerIDs;
         private HashSet<long> knownPlayerIDs = new HashSet<long>();
         private HashSet<long> playerIDs = new HashSet<long>();
         private HashSet<long> playerIDsFromMod = new HashSet<long>();
-        //private HashSet<GalaxyID> galaxyIDs = new HashSet<GalaxyID>();
         private bool antiCheatMessageSent = false;
         private int kickTimer = 60; // how long in seconds before checking if a player sent id.
         //private string lastFragment = "this is the last sentence in chat";
         //private string chatMessageCheck = "this is to gate the check on the variable lastFragment";
-        public string line;
-
-        /// <summary>
-        /// use this to fix messaging when you get a chance.
-        /// </summary>
-        public readonly static List<string> Messages = new List<string>();//to store messages
-        /// <summary>
-        /// /////////////////
-        /// </summary>
+        private string line;
 
         //connection slots
         private bool slot1Used = false;
@@ -148,8 +149,6 @@ namespace FunnySnek.AntiCheat.Server
         private bool slot28Used = false;
         private bool slot29Used = false;
         private bool slot30Used = false;
-
-        
 
         //multiplayerID Variables
         private long multiplayerID1;
@@ -375,55 +374,72 @@ namespace FunnySnek.AntiCheat.Server
         private bool didQuit29 = false;
         private bool didQuit30 = false;
 
+
+        /*********
+        ** Accessors
+        *********/
+        /// <summary>use this to fix messaging when you get a chance.</summary>
+        public static readonly List<string> Messages = new List<string>();//to store messages
+
+
+        /*********
+        ** Public methods
+        *********/
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
             Patch.PatchAll("anticheatviachat.anticheatviachat");
-            GameEvents.OneSecondTick += this.GameEvents_OneSecondTick;
-            GameEvents.FourthUpdateTick += this.GameEvents_FourthUpdateTick;
+            GameEvents.OneSecondTick += this.OnOneSecondTick;
+            GameEvents.FourthUpdateTick += this.OnFourthUpdateTick;
 
         }
 
-        public void WhatColorToSayWhenKickBefore()
+
+        /*********
+        ** Private methods
+        *********/
+        private void WhatColorToSayWhenKickBefore()
         {
             Game1.chatBox.activate();
             Game1.chatBox.setText("/color red");
             Game1.chatBox.chatBox.RecieveCommandInput('\r');
         }
-        public void WhatToSayWhenKickAfter()
+
+        private void WhatToSayWhenKickAfter()
         {
             Game1.chatBox.activate();
             Game1.chatBox.setText("Please Install Latest ServerPack");
             Game1.chatBox.chatBox.RecieveCommandInput('\r');
         }
 
-        private void GameEvents_FourthUpdateTick(object sender, EventArgs e)
+        private void OnFourthUpdateTick(object sender, EventArgs e)
         {
             if (!Context.IsWorldReady)
                 return;
 
-            if (antiCheatMessageSent == false)
+            if (this.antiCheatMessageSent == false)
             {
                 Game1.chatBox.activate();
                 Game1.chatBox.setText("Anticheat Activated");
                 Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                antiCheatMessageSent = true;
+                this.antiCheatMessageSent = true;
             }
 
-            
             //start get multiplayer ID
-            readReceivedMultiplayerID();
+            this.ReadReceivedMultiplayerID();
             string cleanFragment = "a";
 
-            if (line.Length >= 4)
+            if (this.line.Length >= 4)
             {
-                cleanFragment = line.Substring(4); //starts a new string at 5th character 
+                cleanFragment = this.line.Substring(4); //starts a new string at 5th character 
             }
             if (long.TryParse(cleanFragment, out long lastID))
             {
-                if (!playerIDsFromMod.Contains(lastID))
+                if (!this.playerIDsFromMod.Contains(lastID))
                 {
                     this.Monitor.Log($"ID From Mod: {lastID}");
-                    playerIDsFromMod.Add(lastID);
+                    this.playerIDsFromMod.Add(lastID);
                 }
                 //clear out txt file holding latest ID
                 try
@@ -449,8 +465,9 @@ namespace FunnySnek.AntiCheat.Server
             }
 
         }
+
         //read from file
-        private void readReceivedMultiplayerID()
+        private void ReadReceivedMultiplayerID()
         {
 
             try
@@ -458,7 +475,7 @@ namespace FunnySnek.AntiCheat.Server
                 using (StreamReader sr = new StreamReader("Mods/anticheatviachat/ReceivedMultiplayerID.txt"))
                 {
                     // Read the stream to a string, and write the string to the console.
-                    line = sr.ReadToEnd();
+                    this.line = sr.ReadToEnd();
 
                 }
             }
@@ -469,407 +486,333 @@ namespace FunnySnek.AntiCheat.Server
             }
         }
 
-
-
-
-        private void GameEvents_OneSecondTick(object sender, EventArgs e)
+        private void OnOneSecondTick(object sender, EventArgs e)
         {
             if (!Context.IsWorldReady)
                 return;
 
-
-
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // if someone new connects to the game store their ID's in am unused variable slot
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            if (connectedFarmersCount < Game1.otherFarmers.Count)
+            if (this.connectedFarmersCount < Game1.otherFarmers.Count)
             {
                 //store newest joined player(s) to a list, exclude already joined players (knonwnPlayerIDs)
-                newPlayerIDs = Game1
+                this.newPlayerIDs = Game1
                     .getOnlineFarmers()
                     .Select(p => p.UniqueMultiplayerID)
-                    .Except(knownPlayerIDs)
+                    .Except(this.knownPlayerIDs)
                     .ToArray();
 
 
-                
-                //store all game GalaxyIDs to a list
-                /*galaxyIDs.Clear();
-                IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                foreach (Server server in servers)
+                if (this.slot1Used == false)
                 {
-                    GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                    if (socket == null)
-                        continue;
-                    
-                        foreach (GalaxyID connection in socket.Connections)
-                        {
-                            galaxyIDs.Add(connection);
-                            this.Monitor.Log("GalaxyID added: " + galaxyIDs.Last().ToString());
-                        }
-                    
-                }*/
+                    this.multiplayerID1 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID1);
 
-
-
-
-                //kick if more than 30 players on
-                //disabling for now may use in future
-                /*
-                if (playerIDs.Count > 30)
-                {
-                    var removePlayer = playerIDs.Last();
-                    //todo kick galaxyID3
-                    //kick to void for now
-                    Game1.server.sendMessage(removePlayer, new OutgoingMessage((byte)19, removePlayer, new object[0]));
-                    Game1.server.playerDisconnected(removePlayer);
-                    connectedFarmersCount -= 1;
-                }*/
-
-
-
-
-
-
-                if (slot1Used == false)
-                {
-                    multiplayerID1 = newPlayerIDs.LastOrDefault();/*newest unique onlineFarmer.UniqueMultiplayerID in Game1.getOnlineFarmers()*/
-                    knownPlayerIDs.Add(multiplayerID1);
-                    
-                    this.Monitor.Log($"New Player: {multiplayerID1}");
-                    //galaxyID1 = galaxyIDs.LastOrDefault(); /*newest unique GalaxyID in connections()*/
-                    connectedFarmersCount += 1;
-                    slot1CountDown = true;
-                    slot1Used = true;
+                    this.Monitor.Log($"New Player: {this.multiplayerID1}");
+                    this.connectedFarmersCount += 1;
+                    this.slot1CountDown = true;
+                    this.slot1Used = true;
                     return;
                 }
 
-                if (slot2Used == false)
+                if (this.slot2Used == false)
                 {
-                    multiplayerID2 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID2);
-                    this.Monitor.Log($"New Player: {multiplayerID2}");
-                    //galaxyID2 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot2CountDown = true;
-                    slot2Used = true;
+                    this.multiplayerID2 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID2);
+                    this.Monitor.Log($"New Player: {this.multiplayerID2}");
+                    this.connectedFarmersCount += 1;
+                    this.slot2CountDown = true;
+                    this.slot2Used = true;
                     return;
                 }
 
-                if (slot3Used == false)
+                if (this.slot3Used == false)
                 {
-                    multiplayerID3 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID3);
-                    this.Monitor.Log($"New Player: {multiplayerID3}");
-                    //galaxyID3 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot3CountDown = true;
-                    slot3Used = true;
+                    this.multiplayerID3 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID3);
+                    this.Monitor.Log($"New Player: {this.multiplayerID3}");
+                    this.connectedFarmersCount += 1;
+                    this.slot3CountDown = true;
+                    this.slot3Used = true;
                     return;
                 }
-                if (slot4Used == false)
+                if (this.slot4Used == false)
                 {
-                    multiplayerID4 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID4);
+                    this.multiplayerID4 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID4);
 
-                    this.Monitor.Log($"New Player: {multiplayerID4}");
-                    
-                    //galaxyID4 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot4CountDown = true;
-                    slot4Used = true;
+                    this.Monitor.Log($"New Player: {this.multiplayerID4}");
+
+                    this.connectedFarmersCount += 1;
+                    this.slot4CountDown = true;
+                    this.slot4Used = true;
                     return;
                 }
-                if (slot5Used == false)
+                if (this.slot5Used == false)
                 {
-                    multiplayerID5 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID5);
-                    this.Monitor.Log($"New Player: {multiplayerID5}");
-                    //galaxyID5 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot5CountDown = true;
-                    slot5Used = true;
+                    this.multiplayerID5 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID5);
+                    this.Monitor.Log($"New Player: {this.multiplayerID5}");
+                    this.connectedFarmersCount += 1;
+                    this.slot5CountDown = true;
+                    this.slot5Used = true;
                     return;
                 }
-                if (slot6Used == false)
+                if (this.slot6Used == false)
                 {
-                    multiplayerID6 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID6);
-                    this.Monitor.Log($"New Player: {multiplayerID6}");
-                    //galaxyID6 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot6CountDown = true;
-                    slot6Used = true;
+                    this.multiplayerID6 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID6);
+                    this.Monitor.Log($"New Player: {this.multiplayerID6}");
+                    this.connectedFarmersCount += 1;
+                    this.slot6CountDown = true;
+                    this.slot6Used = true;
                     return;
                 }
-                if (slot7Used == false)
+                if (this.slot7Used == false)
                 {
-                    multiplayerID7 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID7);
-                    this.Monitor.Log($"New Player: {multiplayerID7}");
-                    //galaxyID7 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot7CountDown = true;
-                    slot7Used = true;
+                    this.multiplayerID7 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID7);
+                    this.Monitor.Log($"New Player: {this.multiplayerID7}");
+                    this.connectedFarmersCount += 1;
+                    this.slot7CountDown = true;
+                    this.slot7Used = true;
                     return;
                 }
-                if (slot8Used == false)
+                if (this.slot8Used == false)
                 {
-                    multiplayerID8 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID8);
-                    this.Monitor.Log($"New Player: {multiplayerID8}");
-                    //galaxyID8 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot8CountDown = true;
-                    slot8Used = true;
+                    this.multiplayerID8 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID8);
+                    this.Monitor.Log($"New Player: {this.multiplayerID8}");
+                    this.connectedFarmersCount += 1;
+                    this.slot8CountDown = true;
+                    this.slot8Used = true;
                     return;
                 }
 
-                if (slot9Used == false)
+                if (this.slot9Used == false)
                 {
-                    multiplayerID9 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID9);
-                    this.Monitor.Log($"New Player: {multiplayerID9}");
-                    //galaxyID9 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot9CountDown = true;
-                    slot9Used = true;
+                    this.multiplayerID9 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID9);
+                    this.Monitor.Log($"New Player: {this.multiplayerID9}");
+                    this.connectedFarmersCount += 1;
+                    this.slot9CountDown = true;
+                    this.slot9Used = true;
                     return;
                 }
-                if (slot10Used == false)
+                if (this.slot10Used == false)
                 {
-                    multiplayerID10 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID10);
-                    this.Monitor.Log($"New Player: {multiplayerID10}");
-                    //galaxyID10 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot10CountDown = true;
-                    slot10Used = true;
+                    this.multiplayerID10 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID10);
+                    this.Monitor.Log($"New Player: {this.multiplayerID10}");
+                    this.connectedFarmersCount += 1;
+                    this.slot10CountDown = true;
+                    this.slot10Used = true;
                     return;
                 }
-                if (slot11Used == false)
+                if (this.slot11Used == false)
                 {
-                    multiplayerID11 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID11);
-                    this.Monitor.Log($"New Player: {multiplayerID11}");
-                    //galaxyID11 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot11CountDown = true;
-                    slot11Used = true;
+                    this.multiplayerID11 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID11);
+                    this.Monitor.Log($"New Player: {this.multiplayerID11}");
+                    this.connectedFarmersCount += 1;
+                    this.slot11CountDown = true;
+                    this.slot11Used = true;
                     return;
                 }
 
-                if (slot12Used == false)
+                if (this.slot12Used == false)
                 {
-                    multiplayerID12 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID12);
-                    this.Monitor.Log($"New Player: {multiplayerID12}");
-                    //galaxyID12 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot12CountDown = true;
-                    slot12Used = true;
+                    this.multiplayerID12 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID12);
+                    this.Monitor.Log($"New Player: {this.multiplayerID12}");
+                    this.connectedFarmersCount += 1;
+                    this.slot12CountDown = true;
+                    this.slot12Used = true;
                     return;
                 }
 
-                if (slot13Used == false)
+                if (this.slot13Used == false)
                 {
-                    multiplayerID13 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID13);
-                    this.Monitor.Log($"New Player: {multiplayerID3}");
-                    //galaxyID13 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot13CountDown = true;
-                    slot13Used = true;
+                    this.multiplayerID13 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID13);
+                    this.Monitor.Log($"New Player: {this.multiplayerID3}");
+                    this.connectedFarmersCount += 1;
+                    this.slot13CountDown = true;
+                    this.slot13Used = true;
                     return;
                 }
-                if (slot14Used == false)
+                if (this.slot14Used == false)
                 {
-                    multiplayerID14 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID14);
-                    this.Monitor.Log($"New Player: {multiplayerID14}");
-                    //galaxyID14 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot14CountDown = true;
-                    slot14Used = true;
+                    this.multiplayerID14 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID14);
+                    this.Monitor.Log($"New Player: {this.multiplayerID14}");
+                    this.connectedFarmersCount += 1;
+                    this.slot14CountDown = true;
+                    this.slot14Used = true;
                     return;
                 }
-                if (slot15Used == false)
+                if (this.slot15Used == false)
                 {
-                    multiplayerID15 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID15);
-                    this.Monitor.Log($"New Player: {multiplayerID15}");
-                    //galaxyID15 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot15CountDown = true;
-                    slot15Used = true;
+                    this.multiplayerID15 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID15);
+                    this.Monitor.Log($"New Player: {this.multiplayerID15}");
+                    this.connectedFarmersCount += 1;
+                    this.slot15CountDown = true;
+                    this.slot15Used = true;
                     return;
                 }
-                if (slot16Used == false)
+                if (this.slot16Used == false)
                 {
-                    multiplayerID16 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID16);
-                    this.Monitor.Log($"New Player: {multiplayerID16}");
-                    //galaxyID16 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot16CountDown = true;
-                    slot16Used = true;
+                    this.multiplayerID16 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID16);
+                    this.Monitor.Log($"New Player: {this.multiplayerID16}");
+                    this.connectedFarmersCount += 1;
+                    this.slot16CountDown = true;
+                    this.slot16Used = true;
                     return;
                 }
-                if (slot17Used == false)
+                if (this.slot17Used == false)
                 {
-                    multiplayerID17 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID17);
-                    this.Monitor.Log($"New Player: {multiplayerID17}");
-                    //galaxyID17 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot17CountDown = true;
-                    slot17Used = true;
+                    this.multiplayerID17 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID17);
+                    this.Monitor.Log($"New Player: {this.multiplayerID17}");
+                    this.connectedFarmersCount += 1;
+                    this.slot17CountDown = true;
+                    this.slot17Used = true;
                     return;
                 }
-                if (slot18Used == false)
+                if (this.slot18Used == false)
                 {
-                    multiplayerID18 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID18);
-                    this.Monitor.Log($"New Player: {multiplayerID18}");
-                    //galaxyID18 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot18CountDown = true;
-                    slot18Used = true;
+                    this.multiplayerID18 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID18);
+                    this.Monitor.Log($"New Player: {this.multiplayerID18}");
+                    this.connectedFarmersCount += 1;
+                    this.slot18CountDown = true;
+                    this.slot18Used = true;
                     return;
                 }
-                if (slot19Used == false)
+                if (this.slot19Used == false)
                 {
-                    multiplayerID19 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID19);
-                    this.Monitor.Log($"New Player: {multiplayerID19}");
-                    //galaxyID19 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot19CountDown = true;
-                    slot19Used = true;
+                    this.multiplayerID19 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID19);
+                    this.Monitor.Log($"New Player: {this.multiplayerID19}");
+                    this.connectedFarmersCount += 1;
+                    this.slot19CountDown = true;
+                    this.slot19Used = true;
                     return;
                 }
-                if (slot20Used == false)
+                if (this.slot20Used == false)
                 {
-                    multiplayerID20 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID20);
-                    this.Monitor.Log($"New Player: {multiplayerID20}");
-                    //galaxyID20 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot20CountDown = true;
-                    slot20Used = true;
+                    this.multiplayerID20 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID20);
+                    this.Monitor.Log($"New Player: {this.multiplayerID20}");
+                    this.connectedFarmersCount += 1;
+                    this.slot20CountDown = true;
+                    this.slot20Used = true;
                     return;
                 }
-                if (slot21Used == false)
+                if (this.slot21Used == false)
                 {
-                    multiplayerID21 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID21);
-                    this.Monitor.Log($"New Player: {multiplayerID21}");
-                    //galaxyID21 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot21CountDown = true;
-                    slot21Used = true;
+                    this.multiplayerID21 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID21);
+                    this.Monitor.Log($"New Player: {this.multiplayerID21}");
+                    this.connectedFarmersCount += 1;
+                    this.slot21CountDown = true;
+                    this.slot21Used = true;
                     return;
                 }
 
-                if (slot22Used == false)
+                if (this.slot22Used == false)
                 {
-                    multiplayerID22 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID22);
-                    this.Monitor.Log($"New Player: {multiplayerID22}");
-                    //galaxyID22 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot22CountDown = true;
-                    slot22Used = true;
+                    this.multiplayerID22 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID22);
+                    this.Monitor.Log($"New Player: {this.multiplayerID22}");
+                    this.connectedFarmersCount += 1;
+                    this.slot22CountDown = true;
+                    this.slot22Used = true;
                     return;
                 }
 
-                if (slot23Used == false)
+                if (this.slot23Used == false)
                 {
-                    multiplayerID23 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID23);
-                    this.Monitor.Log($"New Player: {multiplayerID23}");
-                    //galaxyID23 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot23CountDown = true;
-                    slot23Used = true;
+                    this.multiplayerID23 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID23);
+                    this.Monitor.Log($"New Player: {this.multiplayerID23}");
+                    this.connectedFarmersCount += 1;
+                    this.slot23CountDown = true;
+                    this.slot23Used = true;
                     return;
                 }
-                if (slot24Used == false)
+                if (this.slot24Used == false)
                 {
-                    multiplayerID24 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID24);
-                    this.Monitor.Log($"New Player: {multiplayerID24}");
-                    //galaxyID24 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot24CountDown = true;
-                    slot24Used = true;
+                    this.multiplayerID24 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID24);
+                    this.Monitor.Log($"New Player: {this.multiplayerID24}");
+                    this.connectedFarmersCount += 1;
+                    this.slot24CountDown = true;
+                    this.slot24Used = true;
                     return;
                 }
-                if (slot25Used == false)
+                if (this.slot25Used == false)
                 {
-                    multiplayerID25 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID25);
-                    this.Monitor.Log($"New Player: {multiplayerID25}");
-                    //galaxyID25 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot25CountDown = true;
-                    slot25Used = true;
+                    this.multiplayerID25 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID25);
+                    this.Monitor.Log($"New Player: {this.multiplayerID25}");
+                    this.connectedFarmersCount += 1;
+                    this.slot25CountDown = true;
+                    this.slot25Used = true;
                     return;
                 }
-                if (slot26Used == false)
+                if (this.slot26Used == false)
                 {
-                    multiplayerID26 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID26);
-                    this.Monitor.Log($"New Player: {multiplayerID26}");
-                    //galaxyID26 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot26CountDown = true;
-                    slot26Used = true;
+                    this.multiplayerID26 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID26);
+                    this.Monitor.Log($"New Player: {this.multiplayerID26}");
+                    this.connectedFarmersCount += 1;
+                    this.slot26CountDown = true;
+                    this.slot26Used = true;
                     return;
                 }
-                if (slot27Used == false)
+                if (this.slot27Used == false)
                 {
-                    multiplayerID27 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID27);
-                    this.Monitor.Log($"New Player: {multiplayerID27}");
-                    //galaxyID27 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot27CountDown = true;
-                    slot27Used = true;
+                    this.multiplayerID27 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID27);
+                    this.Monitor.Log($"New Player: {this.multiplayerID27}");
+                    this.connectedFarmersCount += 1;
+                    this.slot27CountDown = true;
+                    this.slot27Used = true;
                     return;
                 }
-                if (slot28Used == false)
+                if (this.slot28Used == false)
                 {
-                    multiplayerID28 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID28);
-                    this.Monitor.Log($"New Player: {multiplayerID28}");
-                    //galaxyID28 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot28CountDown = true;
-                    slot28Used = true;
+                    this.multiplayerID28 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID28);
+                    this.Monitor.Log($"New Player: {this.multiplayerID28}");
+                    this.connectedFarmersCount += 1;
+                    this.slot28CountDown = true;
+                    this.slot28Used = true;
                     return;
                 }
 
-                if (slot29Used == false)
+                if (this.slot29Used == false)
                 {
-                    multiplayerID29 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID29);
-                    this.Monitor.Log($"New Player: {multiplayerID29}");
-                    //galaxyID29 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot29CountDown = true;
-                    slot29Used = true;
+                    this.multiplayerID29 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID29);
+                    this.Monitor.Log($"New Player: {this.multiplayerID29}");
+                    this.connectedFarmersCount += 1;
+                    this.slot29CountDown = true;
+                    this.slot29Used = true;
                     return;
                 }
-                if (slot30Used == false)
+                if (this.slot30Used == false)
                 {
-                    multiplayerID30 = newPlayerIDs.LastOrDefault();
-                    knownPlayerIDs.Add(multiplayerID30);
-                    this.Monitor.Log($"New Player: {multiplayerID30}");
-                    //galaxyID30 = galaxyIDs.LastOrDefault();
-                    connectedFarmersCount += 1;
-                    slot30CountDown = true;
-                    slot30Used = true;
+                    this.multiplayerID30 = this.newPlayerIDs.LastOrDefault();
+                    this.knownPlayerIDs.Add(this.multiplayerID30);
+                    this.Monitor.Log($"New Player: {this.multiplayerID30}");
+                    this.connectedFarmersCount += 1;
+                    this.slot30CountDown = true;
+                    this.slot30Used = true;
                     return;
                 }
             }
@@ -877,2194 +820,1426 @@ namespace FunnySnek.AntiCheat.Server
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             //if someone disconnects from the game find out who it was and open up their used variable slot
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            if (connectedFarmersCount > Game1.otherFarmers.Count)
+            if (this.connectedFarmersCount > Game1.otherFarmers.Count)
             {
-                playerIDs.Clear();
+                this.playerIDs.Clear();
                 //store all game MultiplayerIDs to a list
                 foreach (Farmer onlineFarmer in Game1.getOnlineFarmers())
                 {
-                    playerIDs.Add(onlineFarmer.UniqueMultiplayerID);
+                    this.playerIDs.Add(onlineFarmer.UniqueMultiplayerID);
                 }
 
-                if (slot1Used == true)
+                if (this.slot1Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID1))// player has left game if we have their ID stored but the game doesn't any more
+                    if (!this.playerIDs.Contains(this.multiplayerID1))// player has left game if we have their ID stored but the game doesn't any more
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID1))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID1))
                         {
-                            playerIDsFromMod.Remove(multiplayerID1);
-                            this.Monitor.Log($"Removing: {multiplayerID1}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID1);
+                            this.Monitor.Log($"Removing: {this.multiplayerID1}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID1);
-                        connectedFarmersCount -= 1;
-                        didQuit1 = true;
-                        slot1Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID1);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit1 = true;
+                        this.slot1Used = false;
                     }
                 }
-                if (slot2Used == true)
+                if (this.slot2Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID2))
+                    if (!this.playerIDs.Contains(this.multiplayerID2))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID2))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID2))
                         {
-                            playerIDsFromMod.Remove(multiplayerID2);
-                            this.Monitor.Log($"Removing: {multiplayerID2}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID2);
+                            this.Monitor.Log($"Removing: {this.multiplayerID2}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID2);
-                        connectedFarmersCount -= 1;
-                        didQuit2 = true;
-                        slot2Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID2);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit2 = true;
+                        this.slot2Used = false;
                     }
                 }
-                if (slot3Used == true)
+                if (this.slot3Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID3))
+                    if (!this.playerIDs.Contains(this.multiplayerID3))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID3))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID3))
                         {
-                            playerIDsFromMod.Remove(multiplayerID3);
-                            this.Monitor.Log($"Removing: {multiplayerID3}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID3);
+                            this.Monitor.Log($"Removing: {this.multiplayerID3}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID3);
-                        connectedFarmersCount -= 1;
-                        didQuit3 = true;
-                        slot3Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID3);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit3 = true;
+                        this.slot3Used = false;
                     }
                 }
-                if (slot4Used == true)
+                if (this.slot4Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID4))
+                    if (!this.playerIDs.Contains(this.multiplayerID4))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID4))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID4))
                         {
-                            playerIDsFromMod.Remove(multiplayerID4);
-                            this.Monitor.Log($"Removing: {multiplayerID4}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID4);
+                            this.Monitor.Log($"Removing: {this.multiplayerID4}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID4);
-                        connectedFarmersCount -= 1;
-                        didQuit4 = true;
-                        slot4Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID4);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit4 = true;
+                        this.slot4Used = false;
                     }
                 }
-                if (slot5Used == true)
+                if (this.slot5Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID5))
+                    if (!this.playerIDs.Contains(this.multiplayerID5))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID5))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID5))
                         {
-                            playerIDsFromMod.Remove(multiplayerID5);
-                            this.Monitor.Log($"Removing: {multiplayerID5}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID5);
+                            this.Monitor.Log($"Removing: {this.multiplayerID5}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID5);
-                        connectedFarmersCount -= 1;
-                        didQuit5 = true;
-                        slot5Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID5);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit5 = true;
+                        this.slot5Used = false;
                     }
                 }
-                if (slot6Used == true)
+                if (this.slot6Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID6))
+                    if (!this.playerIDs.Contains(this.multiplayerID6))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID6))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID6))
                         {
-                            playerIDsFromMod.Remove(multiplayerID6);
-                            this.Monitor.Log($"Removing: {multiplayerID6}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID6);
+                            this.Monitor.Log($"Removing: {this.multiplayerID6}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID6);
-                        connectedFarmersCount -= 1;
-                        didQuit6 = true;
-                        slot6Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID6);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit6 = true;
+                        this.slot6Used = false;
                     }
                 }
-                if (slot7Used == true)
+                if (this.slot7Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID7))
+                    if (!this.playerIDs.Contains(this.multiplayerID7))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID7))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID7))
                         {
-                            playerIDsFromMod.Remove(multiplayerID7);
-                            this.Monitor.Log($"Removing: {multiplayerID7}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID7);
+                            this.Monitor.Log($"Removing: {this.multiplayerID7}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID7);
-                        connectedFarmersCount -= 1;
-                        didQuit7 = true;
-                        slot7Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID7);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit7 = true;
+                        this.slot7Used = false;
                     }
                 }
-                if (slot8Used == true)
+                if (this.slot8Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID8))
+                    if (!this.playerIDs.Contains(this.multiplayerID8))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID8))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID8))
                         {
-                            playerIDsFromMod.Remove(multiplayerID8);
-                            this.Monitor.Log($"Removing: {multiplayerID8}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID8);
+                            this.Monitor.Log($"Removing: {this.multiplayerID8}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID8);
-                        connectedFarmersCount -= 1;
-                        didQuit8 = true;
-                        slot8Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID8);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit8 = true;
+                        this.slot8Used = false;
                     }
                 }
-                if (slot9Used == true)
+                if (this.slot9Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID9))
+                    if (!this.playerIDs.Contains(this.multiplayerID9))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID9))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID9))
                         {
-                            playerIDsFromMod.Remove(multiplayerID9);
-                            this.Monitor.Log($"Removing: {multiplayerID9}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID9);
+                            this.Monitor.Log($"Removing: {this.multiplayerID9}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID9);
-                        connectedFarmersCount -= 1;
-                        didQuit9 = true;
-                        slot9Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID9);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit9 = true;
+                        this.slot9Used = false;
                     }
                 }
-                if (slot10Used == true)
+                if (this.slot10Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID10))
+                    if (!this.playerIDs.Contains(this.multiplayerID10))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID10))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID10))
                         {
-                            playerIDsFromMod.Remove(multiplayerID10);
-                            this.Monitor.Log($"Removing: {multiplayerID10}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID10);
+                            this.Monitor.Log($"Removing: {this.multiplayerID10}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID10);
-                        connectedFarmersCount -= 1;
-                        didQuit10 = true;
-                        slot10Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID10);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit10 = true;
+                        this.slot10Used = false;
                     }
                 }
-                if (slot11Used == true)
+                if (this.slot11Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID11))
+                    if (!this.playerIDs.Contains(this.multiplayerID11))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID11))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID11))
                         {
-                            playerIDsFromMod.Remove(multiplayerID11);
-                            this.Monitor.Log($"Removing: {multiplayerID11}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID11);
+                            this.Monitor.Log($"Removing: {this.multiplayerID11}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID11);
-                        connectedFarmersCount -= 1;
-                        didQuit11 = true;
-                        slot11Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID11);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit11 = true;
+                        this.slot11Used = false;
                     }
                 }
-                if (slot12Used == true)
+                if (this.slot12Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID12))
+                    if (!this.playerIDs.Contains(this.multiplayerID12))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID12))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID12))
                         {
-                            playerIDsFromMod.Remove(multiplayerID12);
-                            this.Monitor.Log($"Removing: {multiplayerID12}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID12);
+                            this.Monitor.Log($"Removing: {this.multiplayerID12}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID12);
-                        connectedFarmersCount -= 1;
-                        didQuit12 = true;
-                        slot12Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID12);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit12 = true;
+                        this.slot12Used = false;
                     }
                 }
-                if (slot13Used == true)
+                if (this.slot13Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID13))
+                    if (!this.playerIDs.Contains(this.multiplayerID13))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID13))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID13))
                         {
-                            playerIDsFromMod.Remove(multiplayerID13);
-                            this.Monitor.Log($"Removing: {multiplayerID13}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID13);
+                            this.Monitor.Log($"Removing: {this.multiplayerID13}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID13);
-                        connectedFarmersCount -= 1;
-                        didQuit13 = true;
-                        slot13Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID13);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit13 = true;
+                        this.slot13Used = false;
                     }
                 }
-                if (slot14Used == true)
+                if (this.slot14Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID14))
+                    if (!this.playerIDs.Contains(this.multiplayerID14))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID14))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID14))
                         {
-                            playerIDsFromMod.Remove(multiplayerID14);
-                            this.Monitor.Log($"Removing: {multiplayerID14}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID14);
+                            this.Monitor.Log($"Removing: {this.multiplayerID14}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID14);
-                        connectedFarmersCount -= 1;
-                        didQuit14 = true;
-                        slot14Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID14);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit14 = true;
+                        this.slot14Used = false;
                     }
                 }
-                if (slot15Used == true)
+                if (this.slot15Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID15))
+                    if (!this.playerIDs.Contains(this.multiplayerID15))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID15))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID15))
                         {
-                            playerIDsFromMod.Remove(multiplayerID15);
-                            this.Monitor.Log($"Removing: {multiplayerID15}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID15);
+                            this.Monitor.Log($"Removing: {this.multiplayerID15}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID15);
-                        connectedFarmersCount -= 1;
-                        didQuit15 = true;
-                        slot15Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID15);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit15 = true;
+                        this.slot15Used = false;
                     }
                 }
-                if (slot16Used == true)
+                if (this.slot16Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID16))
+                    if (!this.playerIDs.Contains(this.multiplayerID16))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID16))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID16))
                         {
-                            playerIDsFromMod.Remove(multiplayerID16);
-                            this.Monitor.Log($"Removing: {multiplayerID16}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID16);
+                            this.Monitor.Log($"Removing: {this.multiplayerID16}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID16);
-                        connectedFarmersCount -= 1;
-                        didQuit16 = true;
-                        slot16Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID16);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit16 = true;
+                        this.slot16Used = false;
                     }
                 }
-                if (slot17Used == true)
+                if (this.slot17Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID17))
+                    if (!this.playerIDs.Contains(this.multiplayerID17))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID17))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID17))
                         {
-                            playerIDsFromMod.Remove(multiplayerID17);
-                            this.Monitor.Log($"Removing: {multiplayerID17}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID17);
+                            this.Monitor.Log($"Removing: {this.multiplayerID17}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID17);
-                        connectedFarmersCount -= 1;
-                        didQuit17 = true;
-                        slot17Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID17);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit17 = true;
+                        this.slot17Used = false;
                     }
                 }
-                if (slot18Used == true)
+                if (this.slot18Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID18))
+                    if (!this.playerIDs.Contains(this.multiplayerID18))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID18))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID18))
                         {
-                            playerIDsFromMod.Remove(multiplayerID18);
-                            this.Monitor.Log($"Removing: {multiplayerID18}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID18);
+                            this.Monitor.Log($"Removing: {this.multiplayerID18}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID18);
-                        connectedFarmersCount -= 1;
-                        didQuit18 = true;
-                        slot18Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID18);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit18 = true;
+                        this.slot18Used = false;
                     }
                 }
-                if (slot19Used == true)
+                if (this.slot19Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID19))
+                    if (!this.playerIDs.Contains(this.multiplayerID19))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID19))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID19))
                         {
-                            playerIDsFromMod.Remove(multiplayerID19);
-                            this.Monitor.Log($"Removing: {multiplayerID19}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID19);
+                            this.Monitor.Log($"Removing: {this.multiplayerID19}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID19);
-                        connectedFarmersCount -= 1;
-                        didQuit19 = true;
-                        slot19Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID19);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit19 = true;
+                        this.slot19Used = false;
                     }
                 }
-                if (slot20Used == true)
+                if (this.slot20Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID20))
+                    if (!this.playerIDs.Contains(this.multiplayerID20))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID20))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID20))
                         {
-                            playerIDsFromMod.Remove(multiplayerID20);
-                            this.Monitor.Log($"Removing: {multiplayerID20}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID20);
+                            this.Monitor.Log($"Removing: {this.multiplayerID20}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID20);
-                        connectedFarmersCount -= 1;
-                        didQuit20 = true;
-                        slot20Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID20);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit20 = true;
+                        this.slot20Used = false;
                     }
                 }
-                if (slot21Used == true)
+                if (this.slot21Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID21))
+                    if (!this.playerIDs.Contains(this.multiplayerID21))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID21))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID21))
                         {
-                            playerIDsFromMod.Remove(multiplayerID21);
-                            this.Monitor.Log($"Removing: {multiplayerID21}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID21);
+                            this.Monitor.Log($"Removing: {this.multiplayerID21}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID21);
-                        connectedFarmersCount -= 1;
-                        didQuit21 = true;
-                        slot21Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID21);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit21 = true;
+                        this.slot21Used = false;
                     }
                 }
-                if (slot22Used == true)
+                if (this.slot22Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID22))
+                    if (!this.playerIDs.Contains(this.multiplayerID22))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID22))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID22))
                         {
-                            playerIDsFromMod.Remove(multiplayerID22);
-                            this.Monitor.Log($"Removing: {multiplayerID22}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID22);
+                            this.Monitor.Log($"Removing: {this.multiplayerID22}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID22);
-                        connectedFarmersCount -= 1;
-                        didQuit22 = true;
-                        slot22Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID22);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit22 = true;
+                        this.slot22Used = false;
                     }
                 }
-                if (slot23Used == true)
+                if (this.slot23Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID23))
+                    if (!this.playerIDs.Contains(this.multiplayerID23))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID23))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID23))
                         {
-                            playerIDsFromMod.Remove(multiplayerID23);
-                            this.Monitor.Log($"Removing: {multiplayerID23}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID23);
+                            this.Monitor.Log($"Removing: {this.multiplayerID23}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID23);
-                        connectedFarmersCount -= 1;
-                        didQuit23 = true;
-                        slot23Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID23);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit23 = true;
+                        this.slot23Used = false;
                     }
                 }
-                if (slot24Used == true)
+                if (this.slot24Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID24))
+                    if (!this.playerIDs.Contains(this.multiplayerID24))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID24))
-                            this.Monitor.Log($"Removing: {multiplayerID24}");
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID24))
+                            this.Monitor.Log($"Removing: {this.multiplayerID24}");
                         {
-                            playerIDsFromMod.Remove(multiplayerID24);
+                            this.playerIDsFromMod.Remove(this.multiplayerID24);
                         }
-                        knownPlayerIDs.Remove(multiplayerID24);
-                        connectedFarmersCount -= 1;
-                        didQuit24 = true;
-                        slot24Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID24);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit24 = true;
+                        this.slot24Used = false;
                     }
                 }
-                if (slot25Used == true)
+                if (this.slot25Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID25))
+                    if (!this.playerIDs.Contains(this.multiplayerID25))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID25))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID25))
                         {
-                            playerIDsFromMod.Remove(multiplayerID25);
-                            this.Monitor.Log($"Removing: {multiplayerID25}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID25);
+                            this.Monitor.Log($"Removing: {this.multiplayerID25}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID25);
-                        connectedFarmersCount -= 1;
-                        didQuit25 = true;
-                        slot25Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID25);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit25 = true;
+                        this.slot25Used = false;
                     }
                 }
-                if (slot26Used == true)
+                if (this.slot26Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID26))
+                    if (!this.playerIDs.Contains(this.multiplayerID26))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID26))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID26))
                         {
-                            playerIDsFromMod.Remove(multiplayerID26);
-                            this.Monitor.Log($"Removing: {multiplayerID26}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID26);
+                            this.Monitor.Log($"Removing: {this.multiplayerID26}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID26);
-                        connectedFarmersCount -= 1;
-                        didQuit26 = true;
-                        slot26Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID26);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit26 = true;
+                        this.slot26Used = false;
                     }
                 }
-                if (slot27Used == true)
+                if (this.slot27Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID27))
+                    if (!this.playerIDs.Contains(this.multiplayerID27))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID27))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID27))
                         {
-                            playerIDsFromMod.Remove(multiplayerID27);
-                            this.Monitor.Log($"Removing: {multiplayerID27}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID27);
+                            this.Monitor.Log($"Removing: {this.multiplayerID27}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID27);
-                        connectedFarmersCount -= 1;
-                        didQuit27 = true;
-                        slot27Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID27);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit27 = true;
+                        this.slot27Used = false;
                     }
                 }
-                if (slot28Used == true)
+                if (this.slot28Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID28))
+                    if (!this.playerIDs.Contains(this.multiplayerID28))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID28))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID28))
                         {
-                            playerIDsFromMod.Remove(multiplayerID28);
-                            this.Monitor.Log($"Removing: {multiplayerID28}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID28);
+                            this.Monitor.Log($"Removing: {this.multiplayerID28}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID28);
-                        connectedFarmersCount -= 1;
-                        didQuit28 = true;
-                        slot28Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID28);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit28 = true;
+                        this.slot28Used = false;
                     }
                 }
-                if (slot29Used == true)
+                if (this.slot29Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID29))
+                    if (!this.playerIDs.Contains(this.multiplayerID29))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID29))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID29))
                         {
-                            playerIDsFromMod.Remove(multiplayerID29);
-                            this.Monitor.Log($"Removing: {multiplayerID29}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID29);
+                            this.Monitor.Log($"Removing: {this.multiplayerID29}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID29);
-                        connectedFarmersCount -= 1;
-                        didQuit29 = true;
-                        slot29Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID29);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit29 = true;
+                        this.slot29Used = false;
                     }
                 }
-                if (slot30Used == true)
+                if (this.slot30Used)
                 {
-                    if (!playerIDs.Contains(multiplayerID30))
+                    if (!this.playerIDs.Contains(this.multiplayerID30))
                     {
-                        if (playerIDsFromMod.Contains(multiplayerID30))
+                        if (this.playerIDsFromMod.Contains(this.multiplayerID30))
                         {
-                            playerIDsFromMod.Remove(multiplayerID30);
-                            this.Monitor.Log($"Removing: {multiplayerID30}");
+                            this.playerIDsFromMod.Remove(this.multiplayerID30);
+                            this.Monitor.Log($"Removing: {this.multiplayerID30}");
                         }
-                        knownPlayerIDs.Remove(multiplayerID30);
-                        connectedFarmersCount -= 1;
-                        didQuit30 = true;
-                        slot30Used = false;
+                        this.knownPlayerIDs.Remove(this.multiplayerID30);
+                        this.connectedFarmersCount -= 1;
+                        this.didQuit30 = true;
+                        this.slot30Used = false;
                     }
                 }
-
-
             }
-
 
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             //if a slot is used countdown until check if they sent their ID through mod, if not kick
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            if (slot1CountDown == true)
+            if (this.slot1CountDown)
             {
 
-                oneSecondTicks1 += 1;
-                if (oneSecondTicks1 >= kickTimer)
+                this.oneSecondTicks1 += 1;
+                if (this.oneSecondTicks1 >= this.kickTimer)
                 {
-                    if (didQuit1 == true)
+                    if (this.didQuit1)
                     {
-                        oneSecondTicks1 = 0;
-                        slot1CountDown = false;
-                        didQuit1 = false;  
+                        this.oneSecondTicks1 = 0;
+                        this.slot1CountDown = false;
+                        this.didQuit1 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID1))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID1))
                     {
 
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID1, new OutgoingMessage((byte)19, multiplayerID1, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID1);
-                        Game1.otherFarmers.Remove(multiplayerID1);
-                        //kick Galaxy ID
-                        //galaxy1CountDown = true;
-                        /////////////////
-                        knownPlayerIDs.Remove(multiplayerID1);
-                        WhatToSayWhenKickAfter();
+                        Game1.server.sendMessage(this.multiplayerID1, new OutgoingMessage(19, this.multiplayerID1));
+                        Game1.server.playerDisconnected(this.multiplayerID1);
+                        Game1.otherFarmers.Remove(this.multiplayerID1);
+                        this.knownPlayerIDs.Remove(this.multiplayerID1);
+                        this.WhatToSayWhenKickAfter();
 
-                        connectedFarmersCount -= 1;
-                        slot1Used = false;
+                        this.connectedFarmersCount -= 1;
+                        this.slot1Used = false;
                     }
-                    oneSecondTicks1 = 0;
-                    slot1CountDown = false;
+                    this.oneSecondTicks1 = 0;
+                    this.slot1CountDown = false;
                 }
             }
 
-            if (slot2CountDown == true)
+            if (this.slot2CountDown)
             {
-                oneSecondTicks2 += 1;
-                if (oneSecondTicks2 >= kickTimer)
+                this.oneSecondTicks2 += 1;
+                if (this.oneSecondTicks2 >= this.kickTimer)
                 {
-                    if (didQuit2 == true)
+                    if (this.didQuit2)
                     {
-                        oneSecondTicks2 = 0;
-                        slot2CountDown = false;
-                        didQuit2 = false;
+                        this.oneSecondTicks2 = 0;
+                        this.slot2CountDown = false;
+                        this.didQuit2 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID2))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID2))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID2, new OutgoingMessage((byte)19, multiplayerID2, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID2);
-                        Game1.otherFarmers.Remove(multiplayerID2);
-                        knownPlayerIDs.Remove(multiplayerID2);
+                        Game1.server.sendMessage(this.multiplayerID2, new OutgoingMessage(19, this.multiplayerID2));
+                        Game1.server.playerDisconnected(this.multiplayerID2);
+                        Game1.otherFarmers.Remove(this.multiplayerID2);
+                        this.knownPlayerIDs.Remove(this.multiplayerID2);
 
-                        //kick Galaxy ID
-                        //galaxy2CountDown = true;
-                        /////////////////
 
-                        WhatToSayWhenKickAfter();
+                        this.WhatToSayWhenKickAfter();
 
-                        connectedFarmersCount -= 1;
-                        slot2Used = false;
+                        this.connectedFarmersCount -= 1;
+                        this.slot2Used = false;
                     }
-                    oneSecondTicks2 = 0;
-                    slot2CountDown = false;
+                    this.oneSecondTicks2 = 0;
+                    this.slot2CountDown = false;
                 }
             }
 
-            if (slot3CountDown == true)
+            if (this.slot3CountDown)
             {
-                oneSecondTicks3 += 1;
-                if (oneSecondTicks3 >= kickTimer)
+                this.oneSecondTicks3 += 1;
+                if (this.oneSecondTicks3 >= this.kickTimer)
                 {
-                    if (didQuit3 == true)
+                    if (this.didQuit3)
                     {
-                        oneSecondTicks3 = 0;
-                        slot3CountDown = false;
-                        didQuit3 = false;
+                        this.oneSecondTicks3 = 0;
+                        this.slot3CountDown = false;
+                        this.didQuit3 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID3))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID3))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID3, new OutgoingMessage((byte)19, multiplayerID3, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID3);
-                        Game1.otherFarmers.Remove(multiplayerID3);
-                        knownPlayerIDs.Remove(multiplayerID3);
-                        //kick Galaxy ID
-                        //galaxy3CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID3, new OutgoingMessage(19, this.multiplayerID3));
+                        Game1.server.playerDisconnected(this.multiplayerID3);
+                        Game1.otherFarmers.Remove(this.multiplayerID3);
+                        this.knownPlayerIDs.Remove(this.multiplayerID3);
 
-                        WhatToSayWhenKickAfter();
+                        this.WhatToSayWhenKickAfter();
 
-                        connectedFarmersCount -= 1;
-                        slot3Used = false;
+                        this.connectedFarmersCount -= 1;
+                        this.slot3Used = false;
                     }
-                    oneSecondTicks3 = 0;
-                    slot3CountDown = false;
+                    this.oneSecondTicks3 = 0;
+                    this.slot3CountDown = false;
                 }
             }
 
-            if (slot4CountDown == true)
+            if (this.slot4CountDown)
             {
 
-                oneSecondTicks4 += 1;
-                if (oneSecondTicks4 >= kickTimer)
+                this.oneSecondTicks4 += 1;
+                if (this.oneSecondTicks4 >= this.kickTimer)
                 {
-                    if (didQuit4 == true)
+                    if (this.didQuit4)
                     {
-                        oneSecondTicks4 = 0;
-                        slot4CountDown = false;
-                        didQuit4 = false;
+                        this.oneSecondTicks4 = 0;
+                        this.slot4CountDown = false;
+                        this.didQuit4 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID4))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID4))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID4, new OutgoingMessage((byte)19, multiplayerID4, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID4);
-                        Game1.otherFarmers.Remove(multiplayerID4);
-                        knownPlayerIDs.Remove(multiplayerID4);
-                        //kick Galaxy ID
-                        //galaxy4CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID4, new OutgoingMessage(19, this.multiplayerID4));
+                        Game1.server.playerDisconnected(this.multiplayerID4);
+                        Game1.otherFarmers.Remove(this.multiplayerID4);
+                        this.knownPlayerIDs.Remove(this.multiplayerID4);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot4Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot4Used = false;
                     }
-                    oneSecondTicks4 = 0;
-                    slot4CountDown = false;
+                    this.oneSecondTicks4 = 0;
+                    this.slot4CountDown = false;
                 }
             }
 
-            if (slot5CountDown == true)
+            if (this.slot5CountDown)
             {
-                oneSecondTicks5 += 1;
-                if (oneSecondTicks5 >= kickTimer)
+                this.oneSecondTicks5 += 1;
+                if (this.oneSecondTicks5 >= this.kickTimer)
                 {
-                    if (didQuit5 == true)
+                    if (this.didQuit5)
                     {
-                        oneSecondTicks5 = 0;
-                        slot5CountDown = false;
-                        didQuit5 = false;
+                        this.oneSecondTicks5 = 0;
+                        this.slot5CountDown = false;
+                        this.didQuit5 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID5))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID5))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID5, new OutgoingMessage((byte)19, multiplayerID5, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID5);
-                        Game1.otherFarmers.Remove(multiplayerID5);
-                        knownPlayerIDs.Remove(multiplayerID5);
-                        //kick Galaxy ID
-                        //galaxy5CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID5, new OutgoingMessage(19, this.multiplayerID5));
+                        Game1.server.playerDisconnected(this.multiplayerID5);
+                        Game1.otherFarmers.Remove(this.multiplayerID5);
+                        this.knownPlayerIDs.Remove(this.multiplayerID5);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot5Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot5Used = false;
                     }
-                    oneSecondTicks5 = 0;
-                    slot5CountDown = false;
+                    this.oneSecondTicks5 = 0;
+                    this.slot5CountDown = false;
                 }
             }
 
-            if (slot6CountDown == true)
+            if (this.slot6CountDown)
             {
-                oneSecondTicks6 += 1;
-                if (oneSecondTicks6 >= kickTimer)
+                this.oneSecondTicks6 += 1;
+                if (this.oneSecondTicks6 >= this.kickTimer)
                 {
 
-                    if (didQuit6 == true)
+                    if (this.didQuit6)
                     {
-                        oneSecondTicks6 = 0;
-                        slot6CountDown = false;
-                        didQuit6 = false;
+                        this.oneSecondTicks6 = 0;
+                        this.slot6CountDown = false;
+                        this.didQuit6 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID6))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID6))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID6, new OutgoingMessage((byte)19, multiplayerID6, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID6);
-                        Game1.otherFarmers.Remove(multiplayerID6);
-                        knownPlayerIDs.Remove(multiplayerID6);
-                        //kick Galaxy ID
-                        //galaxy6CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID6, new OutgoingMessage(19, this.multiplayerID6));
+                        Game1.server.playerDisconnected(this.multiplayerID6);
+                        Game1.otherFarmers.Remove(this.multiplayerID6);
+                        this.knownPlayerIDs.Remove(this.multiplayerID6);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot6Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot6Used = false;
                     }
-                    oneSecondTicks6 = 0;
-                    slot6CountDown = false;
+                    this.oneSecondTicks6 = 0;
+                    this.slot6CountDown = false;
                 }
             }
-            if (slot7CountDown == true)
+            if (this.slot7CountDown)
             {
-                oneSecondTicks7 += 1;
-                if (oneSecondTicks7 >= kickTimer)
+                this.oneSecondTicks7 += 1;
+                if (this.oneSecondTicks7 >= this.kickTimer)
                 {
-                    if (didQuit7 == true)
+                    if (this.didQuit7)
                     {
-                        oneSecondTicks7 = 0;
-                        slot7CountDown = false;
-                        didQuit7 = false;
+                        this.oneSecondTicks7 = 0;
+                        this.slot7CountDown = false;
+                        this.didQuit7 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID7))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID7))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID7, new OutgoingMessage((byte)19, multiplayerID7, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID7);
-                        Game1.otherFarmers.Remove(multiplayerID7);
-                        knownPlayerIDs.Remove(multiplayerID7);
-                        //kick Galaxy ID
-                        //galaxy7CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID7, new OutgoingMessage(19, this.multiplayerID7));
+                        Game1.server.playerDisconnected(this.multiplayerID7);
+                        Game1.otherFarmers.Remove(this.multiplayerID7);
+                        this.knownPlayerIDs.Remove(this.multiplayerID7);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot7Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot7Used = false;
                     }
-                    oneSecondTicks7 = 0;
-                    slot7CountDown = false;
+                    this.oneSecondTicks7 = 0;
+                    this.slot7CountDown = false;
                 }
             }
-            if (slot8CountDown == true)
+            if (this.slot8CountDown)
             {
-                oneSecondTicks8 += 1;
-                if (oneSecondTicks8 >= kickTimer)
+                this.oneSecondTicks8 += 1;
+                if (this.oneSecondTicks8 >= this.kickTimer)
                 {
-                    if (didQuit8 == true)
+                    if (this.didQuit8)
                     {
-                        oneSecondTicks8 = 0;
-                        slot8CountDown = false;
-                        didQuit8 = false;
+                        this.oneSecondTicks8 = 0;
+                        this.slot8CountDown = false;
+                        this.didQuit8 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID8))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID8))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID8, new OutgoingMessage((byte)19, multiplayerID8, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID8);
-                        Game1.otherFarmers.Remove(multiplayerID8);
-                        knownPlayerIDs.Remove(multiplayerID8);
-                        //kick Galaxy ID
-                        //galaxy8CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID8, new OutgoingMessage(19, this.multiplayerID8));
+                        Game1.server.playerDisconnected(this.multiplayerID8);
+                        Game1.otherFarmers.Remove(this.multiplayerID8);
+                        this.knownPlayerIDs.Remove(this.multiplayerID8);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot8Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot8Used = false;
                     }
-                    oneSecondTicks8 = 0;
-                    slot8CountDown = false;
+                    this.oneSecondTicks8 = 0;
+                    this.slot8CountDown = false;
                 }
             }
-            if (slot9CountDown == true)
+            if (this.slot9CountDown)
             {
-                oneSecondTicks9 += 1;
-                if (oneSecondTicks9 >= kickTimer)
+                this.oneSecondTicks9 += 1;
+                if (this.oneSecondTicks9 >= this.kickTimer)
                 {
-                    if (didQuit9 == true)
+                    if (this.didQuit9)
                     {
-                        oneSecondTicks9 = 0;
-                        slot9CountDown = false;
-                        didQuit9 = false;
+                        this.oneSecondTicks9 = 0;
+                        this.slot9CountDown = false;
+                        this.didQuit9 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID9))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID9))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID9, new OutgoingMessage((byte)19, multiplayerID9, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID9);
-                        Game1.otherFarmers.Remove(multiplayerID9);
-                        knownPlayerIDs.Remove(multiplayerID9);
-                        //kick Galaxy ID
-                        //galaxy9CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID9, new OutgoingMessage(19, this.multiplayerID9));
+                        Game1.server.playerDisconnected(this.multiplayerID9);
+                        Game1.otherFarmers.Remove(this.multiplayerID9);
+                        this.knownPlayerIDs.Remove(this.multiplayerID9);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot9Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot9Used = false;
                     }
-                    oneSecondTicks9 = 0;
-                    slot9CountDown = false;
+                    this.oneSecondTicks9 = 0;
+                    this.slot9CountDown = false;
                 }
             }
-            if (slot10CountDown == true)
+            if (this.slot10CountDown)
             {
-                oneSecondTicks10 += 1;
-                if (oneSecondTicks10 >= kickTimer)
+                this.oneSecondTicks10 += 1;
+                if (this.oneSecondTicks10 >= this.kickTimer)
                 {
-                    if (didQuit10 == true)
+                    if (this.didQuit10)
                     {
-                        oneSecondTicks10 = 0;
-                        slot10CountDown = false;
-                        didQuit10 = false;
+                        this.oneSecondTicks10 = 0;
+                        this.slot10CountDown = false;
+                        this.didQuit10 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID10))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID10))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID10, new OutgoingMessage((byte)19, multiplayerID10, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID10);
-                        Game1.otherFarmers.Remove(multiplayerID10);
-                        knownPlayerIDs.Remove(multiplayerID10);
-                        //kick Galaxy ID
-                        //galaxy10CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID10, new OutgoingMessage(19, this.multiplayerID10));
+                        Game1.server.playerDisconnected(this.multiplayerID10);
+                        Game1.otherFarmers.Remove(this.multiplayerID10);
+                        this.knownPlayerIDs.Remove(this.multiplayerID10);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot10Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot10Used = false;
                     }
-                    oneSecondTicks10 = 0;
-                    slot10CountDown = false;
+                    this.oneSecondTicks10 = 0;
+                    this.slot10CountDown = false;
                 }
             }
-            if (slot11CountDown == true)
+            if (this.slot11CountDown)
             {
 
-                oneSecondTicks11 += 1;
-                if (oneSecondTicks11 >= kickTimer)
+                this.oneSecondTicks11 += 1;
+                if (this.oneSecondTicks11 >= this.kickTimer)
                 {
-                    if (didQuit11 == true)
+                    if (this.didQuit11)
                     {
-                        oneSecondTicks11 = 0;
-                        slot11CountDown = false;
-                        didQuit11 = false;
+                        this.oneSecondTicks11 = 0;
+                        this.slot11CountDown = false;
+                        this.didQuit11 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID11))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID11))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID11, new OutgoingMessage((byte)19, multiplayerID11, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID11);
-                        Game1.otherFarmers.Remove(multiplayerID11);
-                        knownPlayerIDs.Remove(multiplayerID11);
-                        //kick Galaxy ID
-                        //galaxy11CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID11, new OutgoingMessage(19, this.multiplayerID11));
+                        Game1.server.playerDisconnected(this.multiplayerID11);
+                        Game1.otherFarmers.Remove(this.multiplayerID11);
+                        this.knownPlayerIDs.Remove(this.multiplayerID11);
 
-                        WhatToSayWhenKickAfter();
+                        this.WhatToSayWhenKickAfter();
 
-                        connectedFarmersCount -= 1;
-                        slot11Used = false;
+                        this.connectedFarmersCount -= 1;
+                        this.slot11Used = false;
                     }
-                    oneSecondTicks11 = 0;
-                    slot11CountDown = false;
+                    this.oneSecondTicks11 = 0;
+                    this.slot11CountDown = false;
                 }
             }
 
-            if (slot12CountDown == true)
+            if (this.slot12CountDown)
             {
-                oneSecondTicks12 += 1;
-                if (oneSecondTicks12 >= kickTimer)
+                this.oneSecondTicks12 += 1;
+                if (this.oneSecondTicks12 >= this.kickTimer)
                 {
-                    if (didQuit12 == true)
+                    if (this.didQuit12)
                     {
-                        oneSecondTicks12 = 0;
-                        slot12CountDown = false;
-                        didQuit12 = false;
+                        this.oneSecondTicks12 = 0;
+                        this.slot12CountDown = false;
+                        this.didQuit12 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID12))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID12))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID12, new OutgoingMessage((byte)19, multiplayerID12, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID12);
-                        Game1.otherFarmers.Remove(multiplayerID12);
-                        knownPlayerIDs.Remove(multiplayerID12);
-                        //kick Galaxy ID
-                        //galaxy12CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID12, new OutgoingMessage(19, this.multiplayerID12));
+                        Game1.server.playerDisconnected(this.multiplayerID12);
+                        Game1.otherFarmers.Remove(this.multiplayerID12);
+                        this.knownPlayerIDs.Remove(this.multiplayerID12);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot12Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot12Used = false;
                     }
-                    oneSecondTicks12 = 0;
-                    slot12CountDown = false;
+                    this.oneSecondTicks12 = 0;
+                    this.slot12CountDown = false;
                 }
             }
 
-            if (slot13CountDown == true)
+            if (this.slot13CountDown)
             {
-                oneSecondTicks13 += 1;
-                if (oneSecondTicks13 >= kickTimer)
+                this.oneSecondTicks13 += 1;
+                if (this.oneSecondTicks13 >= this.kickTimer)
                 {
-                    if (didQuit13 == true)
+                    if (this.didQuit13)
                     {
-                        oneSecondTicks13 = 0;
-                        slot13CountDown = false;
-                        didQuit13 = false;
+                        this.oneSecondTicks13 = 0;
+                        this.slot13CountDown = false;
+                        this.didQuit13 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID13))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID13))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID13, new OutgoingMessage((byte)19, multiplayerID13, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID13);
-                        Game1.otherFarmers.Remove(multiplayerID13);
-                        knownPlayerIDs.Remove(multiplayerID13);
-                        //kick Galaxy ID
-                        //galaxy13CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID13, new OutgoingMessage(19, this.multiplayerID13));
+                        Game1.server.playerDisconnected(this.multiplayerID13);
+                        Game1.otherFarmers.Remove(this.multiplayerID13);
+                        this.knownPlayerIDs.Remove(this.multiplayerID13);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot13Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot13Used = false;
                     }
-                    oneSecondTicks13 = 0;
-                    slot13CountDown = false;
+                    this.oneSecondTicks13 = 0;
+                    this.slot13CountDown = false;
                 }
             }
 
-            if (slot14CountDown == true)
+            if (this.slot14CountDown)
             {
 
-                oneSecondTicks14 += 1;
-                if (oneSecondTicks14 >= kickTimer)
+                this.oneSecondTicks14 += 1;
+                if (this.oneSecondTicks14 >= this.kickTimer)
                 {
-                    if (didQuit14 == true)
+                    if (this.didQuit14)
                     {
-                        oneSecondTicks14 = 0;
-                        slot14CountDown = false;
-                        didQuit14 = false;
+                        this.oneSecondTicks14 = 0;
+                        this.slot14CountDown = false;
+                        this.didQuit14 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID14))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID14))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID14, new OutgoingMessage((byte)19, multiplayerID14, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID14);
-                        Game1.otherFarmers.Remove(multiplayerID14);
-                        knownPlayerIDs.Remove(multiplayerID14);
-                        //kick Galaxy ID
-                        //galaxy14CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID14, new OutgoingMessage(19, this.multiplayerID14));
+                        Game1.server.playerDisconnected(this.multiplayerID14);
+                        Game1.otherFarmers.Remove(this.multiplayerID14);
+                        this.knownPlayerIDs.Remove(this.multiplayerID14);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot14Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot14Used = false;
                     }
-                    oneSecondTicks14 = 0;
-                    slot14CountDown = false;
+                    this.oneSecondTicks14 = 0;
+                    this.slot14CountDown = false;
                 }
             }
 
-            if (slot15CountDown == true)
+            if (this.slot15CountDown)
             {
-                oneSecondTicks5 += 1;
-                if (oneSecondTicks15 >= kickTimer)
+                this.oneSecondTicks5 += 1;
+                if (this.oneSecondTicks15 >= this.kickTimer)
                 {
-                    if (didQuit15 == true)
+                    if (this.didQuit15)
                     {
-                        oneSecondTicks15 = 0;
-                        slot15CountDown = false;
-                        didQuit15 = false;
+                        this.oneSecondTicks15 = 0;
+                        this.slot15CountDown = false;
+                        this.didQuit15 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID15))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID15))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID15, new OutgoingMessage((byte)19, multiplayerID15, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID15);
-                        Game1.otherFarmers.Remove(multiplayerID15);
-                        knownPlayerIDs.Remove(multiplayerID15);
-                        //kick Galaxy ID
-                        //galaxy15CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID15, new OutgoingMessage(19, this.multiplayerID15));
+                        Game1.server.playerDisconnected(this.multiplayerID15);
+                        Game1.otherFarmers.Remove(this.multiplayerID15);
+                        this.knownPlayerIDs.Remove(this.multiplayerID15);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot15Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot15Used = false;
                     }
-                    oneSecondTicks15 = 0;
-                    slot15CountDown = false;
+                    this.oneSecondTicks15 = 0;
+                    this.slot15CountDown = false;
                 }
             }
 
-            if (slot16CountDown == true)
+            if (this.slot16CountDown)
             {
-                oneSecondTicks16 += 1;
-                if (oneSecondTicks16 >= kickTimer)
+                this.oneSecondTicks16 += 1;
+                if (this.oneSecondTicks16 >= this.kickTimer)
                 {
-                    if (didQuit16 == true)
+                    if (this.didQuit16)
                     {
-                        oneSecondTicks16 = 0;
-                        slot16CountDown = false;
-                        didQuit16 = false;
+                        this.oneSecondTicks16 = 0;
+                        this.slot16CountDown = false;
+                        this.didQuit16 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID16))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID16))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID16, new OutgoingMessage((byte)19, multiplayerID16, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID16);
-                        Game1.otherFarmers.Remove(multiplayerID16);
-                        knownPlayerIDs.Remove(multiplayerID16);
-                        //kick Galaxy ID
-                        //galaxy16CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID16, new OutgoingMessage(19, this.multiplayerID16));
+                        Game1.server.playerDisconnected(this.multiplayerID16);
+                        Game1.otherFarmers.Remove(this.multiplayerID16);
+                        this.knownPlayerIDs.Remove(this.multiplayerID16);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot16Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot16Used = false;
                     }
-                    oneSecondTicks16 = 0;
-                    slot16CountDown = false;
+                    this.oneSecondTicks16 = 0;
+                    this.slot16CountDown = false;
                 }
             }
-            if (slot17CountDown == true)
+            if (this.slot17CountDown)
             {
-                oneSecondTicks17 += 1;
-                if (oneSecondTicks17 >= kickTimer)
+                this.oneSecondTicks17 += 1;
+                if (this.oneSecondTicks17 >= this.kickTimer)
                 {
-                    if (didQuit17 == true)
+                    if (this.didQuit17)
                     {
-                        oneSecondTicks17 = 0;
-                        slot17CountDown = false;
-                        didQuit17 = false;
+                        this.oneSecondTicks17 = 0;
+                        this.slot17CountDown = false;
+                        this.didQuit17 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID17))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID17))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID17, new OutgoingMessage((byte)19, multiplayerID17, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID17);
-                        Game1.otherFarmers.Remove(multiplayerID17);
-                        knownPlayerIDs.Remove(multiplayerID17);
-                        //kick Galaxy ID
-                        //galaxy17CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID17, new OutgoingMessage(19, this.multiplayerID17));
+                        Game1.server.playerDisconnected(this.multiplayerID17);
+                        Game1.otherFarmers.Remove(this.multiplayerID17);
+                        this.knownPlayerIDs.Remove(this.multiplayerID17);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot17Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot17Used = false;
                     }
-                    oneSecondTicks17 = 0;
-                    slot17CountDown = false;
+                    this.oneSecondTicks17 = 0;
+                    this.slot17CountDown = false;
                 }
             }
-            if (slot18CountDown == true)
+            if (this.slot18CountDown)
             {
-                oneSecondTicks18 += 1;
-                if (oneSecondTicks18 >= kickTimer)
+                this.oneSecondTicks18 += 1;
+                if (this.oneSecondTicks18 >= this.kickTimer)
                 {
-                    if (didQuit18 == true)
+                    if (this.didQuit18)
                     {
-                        oneSecondTicks18 = 0;
-                        slot18CountDown = false;
-                        didQuit18 = false;
+                        this.oneSecondTicks18 = 0;
+                        this.slot18CountDown = false;
+                        this.didQuit18 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID18))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID18))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID18, new OutgoingMessage((byte)19, multiplayerID18, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID18);
-                        Game1.otherFarmers.Remove(multiplayerID18);
-                        knownPlayerIDs.Remove(multiplayerID18);
-                        //kick Galaxy ID
-                        //galaxy18CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID18, new OutgoingMessage(19, this.multiplayerID18));
+                        Game1.server.playerDisconnected(this.multiplayerID18);
+                        Game1.otherFarmers.Remove(this.multiplayerID18);
+                        this.knownPlayerIDs.Remove(this.multiplayerID18);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot18Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot18Used = false;
                     }
-                    oneSecondTicks18 = 0;
-                    slot18CountDown = false;
+                    this.oneSecondTicks18 = 0;
+                    this.slot18CountDown = false;
                 }
             }
-            if (slot19CountDown == true)
+            if (this.slot19CountDown)
             {
-                oneSecondTicks19 += 1;
-                if (oneSecondTicks19 >= kickTimer)
+                this.oneSecondTicks19 += 1;
+                if (this.oneSecondTicks19 >= this.kickTimer)
                 {
-                    if (didQuit19 == true)
+                    if (this.didQuit19)
                     {
-                        oneSecondTicks19 = 0;
-                        slot19CountDown = false;
-                        didQuit19 = false;
+                        this.oneSecondTicks19 = 0;
+                        this.slot19CountDown = false;
+                        this.didQuit19 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID19))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID19))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID19, new OutgoingMessage((byte)19, multiplayerID19, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID19);
-                        Game1.otherFarmers.Remove(multiplayerID19);
-                        knownPlayerIDs.Remove(multiplayerID19);
-                        //kick Galaxy ID
-                        //galaxy19CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID19, new OutgoingMessage(19, this.multiplayerID19));
+                        Game1.server.playerDisconnected(this.multiplayerID19);
+                        Game1.otherFarmers.Remove(this.multiplayerID19);
+                        this.knownPlayerIDs.Remove(this.multiplayerID19);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot19Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot19Used = false;
                     }
-                    oneSecondTicks19 = 0;
-                    slot19CountDown = false;
+                    this.oneSecondTicks19 = 0;
+                    this.slot19CountDown = false;
                 }
             }
-            if (slot20CountDown == true)
+            if (this.slot20CountDown)
             {
-                oneSecondTicks20 += 1;
-                if (oneSecondTicks20 >= kickTimer)
+                this.oneSecondTicks20 += 1;
+                if (this.oneSecondTicks20 >= this.kickTimer)
                 {
-                    if (didQuit20 == true)
+                    if (this.didQuit20)
                     {
-                        oneSecondTicks20 = 0;
-                        slot20CountDown = false;
-                        didQuit20 = false;
+                        this.oneSecondTicks20 = 0;
+                        this.slot20CountDown = false;
+                        this.didQuit20 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID20))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID20))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID20, new OutgoingMessage((byte)19, multiplayerID20, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID20);
-                        Game1.otherFarmers.Remove(multiplayerID20);
-                        knownPlayerIDs.Remove(multiplayerID20);
-                        //kick Galaxy ID
-                        //galaxy20CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID20, new OutgoingMessage(19, this.multiplayerID20));
+                        Game1.server.playerDisconnected(this.multiplayerID20);
+                        Game1.otherFarmers.Remove(this.multiplayerID20);
+                        this.knownPlayerIDs.Remove(this.multiplayerID20);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot20Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot20Used = false;
                     }
-                    oneSecondTicks20 = 0;
-                    slot20CountDown = false;
+                    this.oneSecondTicks20 = 0;
+                    this.slot20CountDown = false;
                 }
             }
-            if (slot21CountDown == true)
+            if (this.slot21CountDown)
             {
 
-                oneSecondTicks21 += 1;
-                if (oneSecondTicks21 >= kickTimer)
+                this.oneSecondTicks21 += 1;
+                if (this.oneSecondTicks21 >= this.kickTimer)
                 {
-                    if (didQuit21 == true)
+                    if (this.didQuit21)
                     {
-                        oneSecondTicks21 = 0;
-                        slot21CountDown = false;
-                        didQuit21 = false;
+                        this.oneSecondTicks21 = 0;
+                        this.slot21CountDown = false;
+                        this.didQuit21 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID21))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID21))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID21, new OutgoingMessage((byte)19, multiplayerID21, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID21);
-                        Game1.otherFarmers.Remove(multiplayerID21);
-                        knownPlayerIDs.Remove(multiplayerID21);
-                        //kick Galaxy ID
-                        //galaxy21CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID21, new OutgoingMessage(19, this.multiplayerID21));
+                        Game1.server.playerDisconnected(this.multiplayerID21);
+                        Game1.otherFarmers.Remove(this.multiplayerID21);
+                        this.knownPlayerIDs.Remove(this.multiplayerID21);
 
-                        WhatToSayWhenKickAfter();
+                        this.WhatToSayWhenKickAfter();
 
-                        connectedFarmersCount -= 1;
-                        slot21Used = false;
+                        this.connectedFarmersCount -= 1;
+                        this.slot21Used = false;
                     }
-                    oneSecondTicks21 = 0;
-                    slot21CountDown = false;
+                    this.oneSecondTicks21 = 0;
+                    this.slot21CountDown = false;
                 }
             }
 
-            if (slot22CountDown == true)
+            if (this.slot22CountDown)
             {
-                oneSecondTicks22 += 1;
-                if (oneSecondTicks22 >= kickTimer)
+                this.oneSecondTicks22 += 1;
+                if (this.oneSecondTicks22 >= this.kickTimer)
                 {
-                    if (didQuit22 == true)
+                    if (this.didQuit22)
                     {
-                        oneSecondTicks22 = 0;
-                        slot22CountDown = false;
-                        didQuit22 = false;
+                        this.oneSecondTicks22 = 0;
+                        this.slot22CountDown = false;
+                        this.didQuit22 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID22))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID22))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID22, new OutgoingMessage((byte)19, multiplayerID22, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID22);
-                        Game1.otherFarmers.Remove(multiplayerID22);
-                        knownPlayerIDs.Remove(multiplayerID22);
-                        //kick Galaxy ID
-                        //galaxy22CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID22, new OutgoingMessage(19, this.multiplayerID22));
+                        Game1.server.playerDisconnected(this.multiplayerID22);
+                        Game1.otherFarmers.Remove(this.multiplayerID22);
+                        this.knownPlayerIDs.Remove(this.multiplayerID22);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot22Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot22Used = false;
                     }
-                    oneSecondTicks22 = 0;
-                    slot22CountDown = false;
+                    this.oneSecondTicks22 = 0;
+                    this.slot22CountDown = false;
                 }
             }
 
-            if (slot23CountDown == true)
+            if (this.slot23CountDown)
             {
-                oneSecondTicks23 += 1;
-                if (oneSecondTicks23 >= kickTimer)
+                this.oneSecondTicks23 += 1;
+                if (this.oneSecondTicks23 >= this.kickTimer)
                 {
-                    if (didQuit23 == true)
+                    if (this.didQuit23)
                     {
-                        oneSecondTicks23 = 0;
-                        slot23CountDown = false;
-                        didQuit23 = false;
+                        this.oneSecondTicks23 = 0;
+                        this.slot23CountDown = false;
+                        this.didQuit23 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID23))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID23))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID23, new OutgoingMessage((byte)19, multiplayerID23, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID23);
-                        Game1.otherFarmers.Remove(multiplayerID23);
-                        knownPlayerIDs.Remove(multiplayerID23);
-                        //kick Galaxy ID
-                        //galaxy23CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID23, new OutgoingMessage(19, this.multiplayerID23));
+                        Game1.server.playerDisconnected(this.multiplayerID23);
+                        Game1.otherFarmers.Remove(this.multiplayerID23);
+                        this.knownPlayerIDs.Remove(this.multiplayerID23);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot23Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot23Used = false;
                     }
-                    oneSecondTicks23 = 0;
-                    slot23CountDown = false;
+                    this.oneSecondTicks23 = 0;
+                    this.slot23CountDown = false;
                 }
             }
 
-            if (slot24CountDown == true)
+            if (this.slot24CountDown)
             {
 
-                oneSecondTicks24 += 1;
-                if (oneSecondTicks24 >= kickTimer)
+                this.oneSecondTicks24 += 1;
+                if (this.oneSecondTicks24 >= this.kickTimer)
                 {
-                    if (didQuit24 == true)
+                    if (this.didQuit24)
                     {
-                        oneSecondTicks24 = 0;
-                        slot24CountDown = false;
-                        didQuit24 = false;
+                        this.oneSecondTicks24 = 0;
+                        this.slot24CountDown = false;
+                        this.didQuit24 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID24))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID24))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID24, new OutgoingMessage((byte)19, multiplayerID24, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID24);
-                        Game1.otherFarmers.Remove(multiplayerID24);
-                        knownPlayerIDs.Remove(multiplayerID24);
-                        //kick Galaxy ID
-                        //galaxy24CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID24, new OutgoingMessage(19, this.multiplayerID24));
+                        Game1.server.playerDisconnected(this.multiplayerID24);
+                        Game1.otherFarmers.Remove(this.multiplayerID24);
+                        this.knownPlayerIDs.Remove(this.multiplayerID24);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot24Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot24Used = false;
                     }
-                    oneSecondTicks24 = 0;
-                    slot24CountDown = false;
+                    this.oneSecondTicks24 = 0;
+                    this.slot24CountDown = false;
                 }
             }
 
-            if (slot25CountDown == true)
+            if (this.slot25CountDown)
             {
-                oneSecondTicks25 += 1;
-                if (oneSecondTicks25 >= kickTimer)
+                this.oneSecondTicks25 += 1;
+                if (this.oneSecondTicks25 >= this.kickTimer)
                 {
-                    if (didQuit25 == true)
+                    if (this.didQuit25)
                     {
-                        oneSecondTicks25 = 0;
-                        slot25CountDown = false;
-                        didQuit25 = false;
+                        this.oneSecondTicks25 = 0;
+                        this.slot25CountDown = false;
+                        this.didQuit25 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID25))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID25))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID25, new OutgoingMessage((byte)19, multiplayerID25, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID25);
-                        Game1.otherFarmers.Remove(multiplayerID25);
-                        knownPlayerIDs.Remove(multiplayerID25);
-                        //kick Galaxy ID
-                        //galaxy25CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID25, new OutgoingMessage(19, this.multiplayerID25));
+                        Game1.server.playerDisconnected(this.multiplayerID25);
+                        Game1.otherFarmers.Remove(this.multiplayerID25);
+                        this.knownPlayerIDs.Remove(this.multiplayerID25);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot25Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot25Used = false;
                     }
-                    oneSecondTicks25 = 0;
-                    slot25CountDown = false;
+                    this.oneSecondTicks25 = 0;
+                    this.slot25CountDown = false;
                 }
             }
 
-            if (slot26CountDown == true)
+            if (this.slot26CountDown)
             {
-                oneSecondTicks26 += 1;
-                if (oneSecondTicks26 >= kickTimer)
+                this.oneSecondTicks26 += 1;
+                if (this.oneSecondTicks26 >= this.kickTimer)
                 {
-                    if (didQuit26 == true)
+                    if (this.didQuit26)
                     {
-                        oneSecondTicks26 = 0;
-                        slot26CountDown = false;
-                        didQuit26 = false;
+                        this.oneSecondTicks26 = 0;
+                        this.slot26CountDown = false;
+                        this.didQuit26 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID26))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID26))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID26, new OutgoingMessage((byte)19, multiplayerID26, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID26);
-                        Game1.otherFarmers.Remove(multiplayerID26);
-                        knownPlayerIDs.Remove(multiplayerID26);
-                        //kick Galaxy ID
-                        //galaxy26CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID26, new OutgoingMessage(19, this.multiplayerID26));
+                        Game1.server.playerDisconnected(this.multiplayerID26);
+                        Game1.otherFarmers.Remove(this.multiplayerID26);
+                        this.knownPlayerIDs.Remove(this.multiplayerID26);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot26Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot26Used = false;
                     }
-                    oneSecondTicks26 = 0;
-                    slot26CountDown = false;
+                    this.oneSecondTicks26 = 0;
+                    this.slot26CountDown = false;
                 }
             }
-            if (slot27CountDown == true)
+            if (this.slot27CountDown)
             {
-                oneSecondTicks27 += 1;
-                if (oneSecondTicks27 >= kickTimer)
+                this.oneSecondTicks27 += 1;
+                if (this.oneSecondTicks27 >= this.kickTimer)
                 {
-                    if (didQuit27 == true)
+                    if (this.didQuit27)
                     {
-                        oneSecondTicks27 = 0;
-                        slot27CountDown = false;
-                        didQuit27 = false;
+                        this.oneSecondTicks27 = 0;
+                        this.slot27CountDown = false;
+                        this.didQuit27 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID27))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID27))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID27, new OutgoingMessage((byte)19, multiplayerID27, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID27);
-                        Game1.otherFarmers.Remove(multiplayerID27);
-                        knownPlayerIDs.Remove(multiplayerID27);
-                        //kick Galaxy ID
-                        //galaxy27CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID27, new OutgoingMessage(19, this.multiplayerID27));
+                        Game1.server.playerDisconnected(this.multiplayerID27);
+                        Game1.otherFarmers.Remove(this.multiplayerID27);
+                        this.knownPlayerIDs.Remove(this.multiplayerID27);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot27Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot27Used = false;
                     }
-                    oneSecondTicks27 = 0;
-                    slot27CountDown = false;
+                    this.oneSecondTicks27 = 0;
+                    this.slot27CountDown = false;
                 }
             }
-            if (slot28CountDown == true)
+            if (this.slot28CountDown)
             {
-                oneSecondTicks28 += 1;
-                if (oneSecondTicks28 >= kickTimer)
+                this.oneSecondTicks28 += 1;
+                if (this.oneSecondTicks28 >= this.kickTimer)
                 {
-                    if (didQuit28 == true)
+                    if (this.didQuit28)
                     {
-                        oneSecondTicks28 = 0;
+                        this.oneSecondTicks28 = 0;
                         //slot28CountDown = false;
-                        didQuit28 = false;
+                        this.didQuit28 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID28))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID28))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID28, new OutgoingMessage((byte)19, multiplayerID28, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID28);
-                        Game1.otherFarmers.Remove(multiplayerID28);
-                        knownPlayerIDs.Remove(multiplayerID28);
-                        //kick Galaxy ID
-                        //galaxy28CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID28, new OutgoingMessage(19, this.multiplayerID28));
+                        Game1.server.playerDisconnected(this.multiplayerID28);
+                        Game1.otherFarmers.Remove(this.multiplayerID28);
+                        this.knownPlayerIDs.Remove(this.multiplayerID28);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot28Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot28Used = false;
                     }
-                    oneSecondTicks28 = 0;
-                    slot28CountDown = false;
+                    this.oneSecondTicks28 = 0;
+                    this.slot28CountDown = false;
                 }
             }
-            if (slot29CountDown == true)
+            if (this.slot29CountDown)
             {
-                oneSecondTicks29 += 1;
-                if (oneSecondTicks29 >= kickTimer)
+                this.oneSecondTicks29 += 1;
+                if (this.oneSecondTicks29 >= this.kickTimer)
                 {
-                    if (didQuit29 == true)
+                    if (this.didQuit29)
                     {
-                        oneSecondTicks29 = 0;
-                        slot29CountDown = false;
-                        didQuit29 = false;
+                        this.oneSecondTicks29 = 0;
+                        this.slot29CountDown = false;
+                        this.didQuit29 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID29))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID29))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID29, new OutgoingMessage((byte)19, multiplayerID29, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID29);
-                        Game1.otherFarmers.Remove(multiplayerID29);
-                        knownPlayerIDs.Remove(multiplayerID29);
-                        //kick Galaxy ID
-                        //galaxy29CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID29, new OutgoingMessage(19, this.multiplayerID29));
+                        Game1.server.playerDisconnected(this.multiplayerID29);
+                        Game1.otherFarmers.Remove(this.multiplayerID29);
+                        this.knownPlayerIDs.Remove(this.multiplayerID29);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot29Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot29Used = false;
                     }
-                    oneSecondTicks29 = 0;
-                    slot29CountDown = false;
+                    this.oneSecondTicks29 = 0;
+                    this.slot29CountDown = false;
                 }
             }
-            if (slot30CountDown == true)
+            if (this.slot30CountDown)
             {
-                oneSecondTicks30 += 1;
-                if (oneSecondTicks30 >= kickTimer)
+                this.oneSecondTicks30 += 1;
+                if (this.oneSecondTicks30 >= this.kickTimer)
                 {
-                    if (didQuit30 == true)
+                    if (this.didQuit30)
                     {
-                        oneSecondTicks30 = 0;
-                        slot30CountDown = false;
-                        didQuit30 = false;
+                        this.oneSecondTicks30 = 0;
+                        this.slot30CountDown = false;
+                        this.didQuit30 = false;
                     }
-                    else if (!playerIDsFromMod.Contains(multiplayerID30))
+                    else if (!this.playerIDsFromMod.Contains(this.multiplayerID30))
                     {
-                        WhatColorToSayWhenKickBefore();
+                        this.WhatColorToSayWhenKickBefore();
 
                         Game1.chatBox.activate();
                         Game1.chatBox.setText("You are being kicked by AntiCheat");
                         Game1.chatBox.chatBox.RecieveCommandInput('\r');
-                        Game1.server.sendMessage(multiplayerID30, new OutgoingMessage((byte)19, multiplayerID30, new object[0]));
-                        Game1.server.playerDisconnected(multiplayerID30);
-                        Game1.otherFarmers.Remove(multiplayerID30);
-                        knownPlayerIDs.Remove(multiplayerID30);
-                        //kick Galaxy ID
-                        //galaxy30CountDown = true;
-                        /////////////////
+                        Game1.server.sendMessage(this.multiplayerID30, new OutgoingMessage(19, this.multiplayerID30));
+                        Game1.server.playerDisconnected(this.multiplayerID30);
+                        Game1.otherFarmers.Remove(this.multiplayerID30);
+                        this.knownPlayerIDs.Remove(this.multiplayerID30);
 
-                        WhatToSayWhenKickAfter();
-                        connectedFarmersCount -= 1;
-                        slot30Used = false;
+                        this.WhatToSayWhenKickAfter();
+                        this.connectedFarmersCount -= 1;
+                        this.slot30Used = false;
                     }
-                    oneSecondTicks30 = 0;
-                    slot30CountDown = false;
+                    this.oneSecondTicks30 = 0;
+                    this.slot30CountDown = false;
                 }
             }
-
-
-
-
-
-
-
-            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            //countdown from kick until full galaxyID kick
-            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            /*if (galaxy1CountDown == true)
-            {
-                galaxySecondTicks1 += 1;
-                if (galaxySecondTicks1 >= 10)
-                {
-                    if (galaxyID1 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID1);
-                            this.Monitor.Log("Kicking " + galaxyID1.ToString());
-                        }
-                    }
-                    galaxy1CountDown = false;
-                    galaxySecondTicks1 = 0;
-                }
-            }
-
-            if (galaxy2CountDown == true)
-            {
-                galaxySecondTicks2 += 1;
-                if (galaxySecondTicks2 >= 10)
-                {
-                    if (galaxyID2 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID2);
-                            this.Monitor.Log("Kicking " + galaxyID2.ToString());
-                        }
-                    }
-                    galaxy2CountDown = false;
-                    galaxySecondTicks2 = 0;
-                }
-            }
-
-            if (galaxy3CountDown == true)
-            {
-                galaxySecondTicks3 += 1;
-                if (galaxySecondTicks3 >= 10)
-                {
-                    if (galaxyID3 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID3);
-                            this.Monitor.Log("Kicking " + galaxyID3.ToString());
-                        }
-                    }
-                    galaxy3CountDown = false;
-                    galaxySecondTicks3 = 0;
-                }
-            }
-            if (galaxy4CountDown == true)
-            {
-                galaxySecondTicks4 += 1;
-                if (galaxySecondTicks4 >= 10)
-                {
-                    if (galaxyID4 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID4);
-                            this.Monitor.Log("Kicking " + galaxyID4.ToString());
-                        }
-                    }
-                    galaxy4CountDown = false;
-                    galaxySecondTicks4 = 0;
-                }
-            }
-            if (galaxy5CountDown == true)
-            {
-                galaxySecondTicks5 += 1;
-                if (galaxySecondTicks5 >= 10)
-                {
-                    if (galaxyID5 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID5);
-                            this.Monitor.Log("Kicking " + galaxyID5.ToString());
-                        }
-                    }
-                    galaxy5CountDown = false;
-                    galaxySecondTicks5 = 0;
-                }
-            }
-
-            if (galaxy6CountDown == true)
-            {
-                galaxySecondTicks6 += 1;
-                if (galaxySecondTicks6 >= 10)
-                {
-                    if (galaxyID6 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID6);
-                            this.Monitor.Log("Kicking " + galaxyID6.ToString());
-                        }
-                    }
-                    galaxy6CountDown = false;
-                    galaxySecondTicks6 = 0;
-                }
-            }
-            if (galaxy7CountDown == true)
-            {
-                galaxySecondTicks7 += 1;
-                if (galaxySecondTicks7 >= 10)
-                {
-                    if (galaxyID7 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID7);
-                            this.Monitor.Log("Kicking " + galaxyID7.ToString());
-                        }
-                    }
-                    galaxy7CountDown = false;
-                    galaxySecondTicks7 = 0;
-                }
-            }
-            if (galaxy8CountDown == true)
-            {
-                galaxySecondTicks8 += 1;
-                if (galaxySecondTicks8 >= 10)
-                {
-                    if (galaxyID8 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID8);
-                            this.Monitor.Log("Kicking " + galaxyID8.ToString());
-                        }
-                    }
-                    galaxy8CountDown = false;
-                    galaxySecondTicks8 = 0;
-                }
-            }
-            if (galaxy9CountDown == true)
-            {
-                galaxySecondTicks9 += 1;
-                if (galaxySecondTicks9 >= 10)
-                {
-                    if (galaxyID9 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID9);
-                            this.Monitor.Log("Kicking " + galaxyID9.ToString());
-                        }
-                    }
-                    galaxy9CountDown = false;
-                    galaxySecondTicks9 = 0;
-                }
-            }
-            if (galaxy10CountDown == true)
-            {
-                galaxySecondTicks10 += 1;
-                if (galaxySecondTicks10 >= 10)
-                {
-                    if (galaxyID10 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID10);
-                            this.Monitor.Log("Kicking " + galaxyID10.ToString());
-                        }
-                    }
-                    galaxy10CountDown = false;
-                    galaxySecondTicks10 = 0;
-                }
-            }
-
-            if (galaxy11CountDown == true)
-            {
-                galaxySecondTicks11 += 1;
-                if (galaxySecondTicks11 >= 10)
-                {
-                    if (galaxyID11 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID11);
-                            this.Monitor.Log("Kicking " + galaxyID11.ToString());
-                        }
-                    }
-                    galaxy11CountDown = false;
-                    galaxySecondTicks11 = 0;
-                }
-            }
-            if (galaxy12CountDown == true)
-            {
-                galaxySecondTicks12 += 1;
-                if (galaxySecondTicks12 >= 10)
-                {
-                    if (galaxyID12 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID12);
-                            this.Monitor.Log("Kicking " + galaxyID12.ToString());
-                        }
-                    }
-                    galaxy12CountDown = false;
-                    galaxySecondTicks12 = 0;
-                }
-            }
-
-            if (galaxy13CountDown == true)
-            {
-                galaxySecondTicks13 += 1;
-                if (galaxySecondTicks13 >= 10)
-                {
-                    if (galaxyID13 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID13);
-                            this.Monitor.Log("Kicking " + galaxyID13.ToString());
-                        }
-                    }
-                    galaxy13CountDown = false;
-                    galaxySecondTicks13 = 0;
-                }
-            }
-            if (galaxy14CountDown == true)
-            {
-                galaxySecondTicks14 += 1;
-                if (galaxySecondTicks14 >= 10)
-                {
-                    if (galaxyID14 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID14);
-                            this.Monitor.Log("Kicking " + galaxyID14.ToString());
-                        }
-                    }
-                    galaxy14CountDown = false;
-                    galaxySecondTicks14 = 0;
-                }
-            }
-            if (galaxy15CountDown == true)
-            {
-                galaxySecondTicks15 += 1;
-                if (galaxySecondTicks15 >= 10)
-                {
-                    if (galaxyID15 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID15);
-                            this.Monitor.Log("Kicking " + galaxyID15.ToString());
-                        }
-                    }
-                    galaxy15CountDown = false;
-                    galaxySecondTicks15 = 0;
-                }
-            }
-            if (galaxy16CountDown == true)
-            {
-                galaxySecondTicks16 += 1;
-                if (galaxySecondTicks16 >= 10)
-                {
-                    if (galaxyID16 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID16);
-                            this.Monitor.Log("Kicking " + galaxyID16.ToString());
-                        }
-                    }
-                    galaxy16CountDown = false;
-                    galaxySecondTicks16 = 0;
-                }
-            }
-            if (galaxy17CountDown == true)
-            {
-                galaxySecondTicks17 += 1;
-                if (galaxySecondTicks17 >= 10)
-                {
-                    if (galaxyID17 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID17);
-                            this.Monitor.Log("Kicking " + galaxyID17.ToString());
-                        }
-                    }
-                    galaxy17CountDown = false;
-                    galaxySecondTicks17 = 0;
-                }
-            }
-            if (galaxy18CountDown == true)
-            {
-                galaxySecondTicks18 += 1;
-                if (galaxySecondTicks18 >= 10)
-                {
-                    if (galaxyID18 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID18);
-                            this.Monitor.Log("Kicking " + galaxyID18.ToString());
-                        }
-                    }
-                    galaxy18CountDown = false;
-                    galaxySecondTicks18 = 0;
-                }
-            }
-            if (galaxy19CountDown == true)
-            {
-                galaxySecondTicks19 += 1;
-                if (galaxySecondTicks19 >= 10)
-                {
-                    if (galaxyID19 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID19);
-                            this.Monitor.Log("Kicking " + galaxyID19.ToString());
-                        }
-                    }
-                    galaxy19CountDown = false;
-                    galaxySecondTicks19 = 0;
-                }
-            }
-            if (galaxy20CountDown == true)
-            {
-                galaxySecondTicks20 += 1;
-                if (galaxySecondTicks20 >= 10)
-                {
-                    if (galaxyID20 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID20);
-                            this.Monitor.Log("Kicking " + galaxyID20.ToString());
-                        }
-                    }
-                    galaxy20CountDown = false;
-                    galaxySecondTicks20 = 0;
-                }
-            }
-            if (galaxy21CountDown == true)
-            {
-                galaxySecondTicks21 += 1;
-                if (galaxySecondTicks21 >= 10)
-                {
-                    if (galaxyID21 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID21);
-                            this.Monitor.Log("Kicking " + galaxyID21.ToString());
-                        }
-                    }
-                    galaxy21CountDown = false;
-                    galaxySecondTicks21 = 0;
-                }
-            }
-            if (galaxy22CountDown == true)
-            {
-                galaxySecondTicks22 += 1;
-                if (galaxySecondTicks22 >= 10)
-                {
-                    if (galaxyID22 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID22);
-                            this.Monitor.Log("Kicking " + galaxyID22.ToString());
-                        }
-                    }
-                    galaxy22CountDown = false;
-                    galaxySecondTicks22 = 0;
-                }
-            }
-            if (galaxy23CountDown == true)
-            {
-                galaxySecondTicks23 += 1;
-                if (galaxySecondTicks23 >= 10)
-                {
-                    if (galaxyID23 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID23);
-                            this.Monitor.Log("Kicking " + galaxyID23.ToString());
-                        }
-                    }
-                    galaxy23CountDown = false;
-                    galaxySecondTicks23 = 0;
-                }
-            }
-            if (galaxy24CountDown == true)
-            {
-                galaxySecondTicks24 += 1;
-                if (galaxySecondTicks24 >= 10)
-                {
-                    if (galaxyID24 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID24);
-                            this.Monitor.Log("Kicking " + galaxyID24.ToString());
-                        }
-                    }
-                    galaxy24CountDown = false;
-                    galaxySecondTicks24 = 0;
-                }
-            }
-            if (galaxy25CountDown == true)
-            {
-                galaxySecondTicks25 += 1;
-                if (galaxySecondTicks25 >= 10)
-                {
-                    if (galaxyID25 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID25);
-                            this.Monitor.Log("Kicking " + galaxyID25.ToString());
-                        }
-                    }
-                    galaxy25CountDown = false;
-                    galaxySecondTicks25 = 0;
-                }
-            }
-            if (galaxy26CountDown == true)
-            {
-                galaxySecondTicks26 += 1;
-                if (galaxySecondTicks26 >= 10)
-                {
-                    if (galaxyID26 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID26);
-                            this.Monitor.Log("Kicking " + galaxyID26.ToString());
-                        }
-                    }
-                    galaxy26CountDown = false;
-                    galaxySecondTicks26 = 0;
-                }
-            }
-            if (galaxy27CountDown == true)
-            {
-                galaxySecondTicks27 += 1;
-                if (galaxySecondTicks27 >= 10)
-                {
-                    if (galaxyID27 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID27);
-                            this.Monitor.Log("Kicking " + galaxyID27.ToString());
-                        }
-                    }
-                    galaxy27CountDown = false;
-                    galaxySecondTicks27 = 0;
-                }
-            }
-            if (galaxy28CountDown == true)
-            {
-                galaxySecondTicks28 += 1;
-                if (galaxySecondTicks28 >= 10)
-                {
-                    if (galaxyID28 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID28);
-                            this.Monitor.Log("Kicking " + galaxyID28.ToString());
-                        }
-                    }
-                    galaxy28CountDown = false;
-                    galaxySecondTicks28 = 0;
-                }
-            }
-            if (galaxy29CountDown == true)
-            {
-                galaxySecondTicks29 += 1;
-                if (galaxySecondTicks29 >= 10)
-                {
-                    if (galaxyID29 != null)
-                    {
-                        IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                        foreach (Server server in servers)
-                        {
-
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID29);
-                            this.Monitor.Log("Kicking " + galaxyID29.ToString());
-                        }
-                    }
-                    galaxy29CountDown = false;
-                    galaxySecondTicks29 = 0;
-                }
-            }
-            if (galaxy30CountDown == true)
-            {
-                galaxySecondTicks30 += 1;
-                if (galaxySecondTicks30 >= 10)
-                {
-                    IEnumerable<Server> servers = this.Helper.Reflection.GetField<List<Server>>(Game1.server, "servers").GetValue();
-                    foreach (Server server in servers)
-                    {
-                        if (galaxyID30 != null)
-                        {
-                            GalaxySocket socket = this.Helper.Reflection.GetField<object>(server, "server", required: false)?.GetValue() as GalaxySocket;
-                            if (socket == null)
-                                continue;
-                            this.Helper.Reflection.GetMethod(socket, "close").Invoke(galaxyID30);
-                            this.Monitor.Log("Kicking " + galaxyID30.ToString());
-                        }
-                    }
-                    galaxy30CountDown = false;
-                    galaxySecondTicks30 = 0;
-                }
-            }*/
-
         }
     }
 }

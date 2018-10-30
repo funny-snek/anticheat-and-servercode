@@ -67,7 +67,7 @@ namespace FunnySnek.AntiCheat.Server
 
             // get connected player IDs
             HashSet<long> connectedIDs = new HashSet<long>(
-                Game1.getOnlineFarmers().Select(p => p.UniqueMultiplayerID)
+                Game1.getOnlineFarmers().Select(p => p.UniqueMultiplayerID).Except(new [] { Game1.player.UniqueMultiplayerID })
             );
 
             // add new players

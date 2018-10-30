@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using FunnySnek.AntiCheat.Server.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -9,99 +10,6 @@ using StardewValley.Network;
 
 namespace FunnySnek.AntiCheat.Server
 {
-    /// <summary>Harmony patch for kick.</summary>
-    internal class Server_SendMessage_Patcher : Patch
-    {
-        /*********
-        ** Properties
-        *********/
-        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(GameServer), "sendMessage", new System.Type[] { typeof(long), typeof(OutgoingMessage) });
-
-
-        /*********
-        ** Public methods
-        *********/
-        public static bool Prefix(long peerId)
-        {
-            if (Game1.IsServer && (!Game1.otherFarmers.ContainsKey(peerId)))
-            {
-                //They have been kicked off the server
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    /// <summary>Harmony patch for making sure no messages are received from client.</summary>
-    internal class Multiplayer_ProcessIncomingMessage_Patcher : Patch
-    {
-        /*********
-        ** Properties
-        *********/
-        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(Multiplayer), "processIncomingMessage");
-
-
-        /*********
-        ** Public methods
-        *********/
-        public static bool Prefix(IncomingMessage msg)
-        {
-            if (Game1.IsServer && (msg == null || !Game1.otherFarmers.ContainsKey(msg.FarmerID)))
-            {
-                //They have been kicked off the server
-                return false;
-            }
-            return true;
-        }
-    }
-
-    internal class Multiplayer_ParseServerToClientsMessage_Patcher : Patch  //this totally works!
-    {
-        /*********
-        ** Properties
-        *********/
-        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(Multiplayer), "parseServerToClientsMessage");
-
-
-        /*********
-        ** Public methods
-        *********/
-        public static void Prefix(string message) //not sure how to do this line?
-        {
-            if (message.Substring(0, 4) == "SCAZ")//currentpass
-            {
-                //save message to txt file
-                try
-                {
-
-                    //Pass the filepath and filename to the StreamWriter Constructor
-                    StreamWriter sw = new StreamWriter("Mods/anticheatviachat/ReceivedMultiplayerID.txt");
-
-                    //Write a line of text
-                    sw.WriteLine(message);
-                    //Close the file
-                    sw.Close();
-                }
-                catch (Exception b)
-                {
-                    Console.WriteLine("Exception: " + b.Message);
-                }
-                finally
-                {
-                    Console.WriteLine("Executing finally block.");
-                }
-                //use this to add message to my list in ModEntry
-                ModEntry.Messages.Add(message);
-                //////////////////////////////////////////
-                // to send messages
-                //Game1.client.sendMessage((byte) 18, myStringMessage)
-
-            }
-
-        }
-    }
-
     internal class ModEntry : Mod
     {
         /*********

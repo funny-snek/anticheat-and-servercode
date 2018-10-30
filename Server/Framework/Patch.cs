@@ -3,7 +3,7 @@ using System.Linq;
 using System.Reflection;
 using Harmony;
 
-namespace FunnySnek.AntiCheat.Server
+namespace FunnySnek.AntiCheat.Server.Framework
 {
     //Remember Prefix/Postfix should be public and static! Do not use lambdas
     internal abstract class Patch
@@ -46,31 +46,6 @@ namespace FunnySnek.AntiCheat.Server
                 );
 
             harmonyInstance.Patch(targetMethod, new HarmonyMethod(this.GetType().GetMethod("Prefix")), new HarmonyMethod(this.GetType().GetMethod("Postfix")));
-        }
-
-
-        protected class PatchDescriptor
-        {
-            /*********
-            ** Accessors
-            *********/
-            public Type TargetType;
-            public string TargetMethodName;
-            public Type[] TargetMethodArguments;
-
-
-            /*********
-            ** Public methods
-            *********/
-            /// <param name="targetType">Don't use typeof() or it won't work on other platforms</param>
-            /// <param name="targetMethodName">Null if constructor is desired</param>
-            /// <param name="targetMethodArguments">Null if no method abiguity</param>
-            public PatchDescriptor(Type targetType, string targetMethodName, Type[] targetMethodArguments = null)
-            {
-                this.TargetType = targetType;
-                this.TargetMethodName = targetMethodName;
-                this.TargetMethodArguments = targetMethodArguments;
-            }
         }
     }
 }

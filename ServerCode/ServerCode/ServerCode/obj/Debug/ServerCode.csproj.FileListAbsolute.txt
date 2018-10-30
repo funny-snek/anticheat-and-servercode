@@ -1,0 +1,8 @@
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\bin\Debug\ServerCode.dll
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\bin\Debug\ServerCode.pdb
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\obj\Debug\ServerCode.csproj.CoreCompileInputs.cache
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\obj\Debug\ServerCode.dll
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\obj\Debug\ServerCode.pdb
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\bin\Debug\EventGenerator.dll
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\obj\Debug\ServerCode.csproj.CopyComplete
+C:\Users\Curtis\source\repos\ServerCode\ServerCode\obj\Debug\ServerCode.csprojAssemblyReference.cache

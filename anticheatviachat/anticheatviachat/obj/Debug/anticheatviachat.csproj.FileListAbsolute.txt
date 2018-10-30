@@ -1,8 +1,0 @@
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\obj\Debug\anticheatviachat.csproj.CoreCompileInputs.cache
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\bin\Debug\anticheatviachat.dll
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\bin\Debug\anticheatviachat.pdb
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\obj\Debug\anticheatviachat.dll
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\obj\Debug\anticheatviachat.pdb
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\obj\Debug\anticheatviachat.csproj.CopyComplete
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\bin\Debug\0Harmony.dll
-C:\Users\Curtis\source\repos\anticheatviachat\anticheatviachat\obj\Debug\anticheatviachat.csprojAssemblyReference.cache

@@ -81,7 +81,7 @@ namespace FunnySnek.AntiCheat.Server
                         IsCountingDown = true,
                         CountDownSeconds = SecondsUntilKick
                     };
-                    this.Monitor.Log($"New player connected: {playerID}");
+                    this.Monitor.Log($"Player joined: {playerID}");
                 }
             }
 
@@ -91,7 +91,7 @@ namespace FunnySnek.AntiCheat.Server
                 if (!connectedIDs.Contains(playerID))
                 {
                     this.PlayerSlots.Remove(playerID);
-                    this.Monitor.Log($"Player disconnected: {playerID}");
+                    this.Monitor.Log($"Player quit: {playerID}");
                 }
             }
 
@@ -115,10 +115,11 @@ namespace FunnySnek.AntiCheat.Server
                     }
 
                     // disable countdown for player
+                    this.Monitor.Log($"Player approved: {playerID}");
                     slot.IsCountingDown = false;
                 }
             }
-
+            ModEntry.MessagesReceived.Clear();
 
             // kick players whose countdowns expired
             foreach (long playerID in this.PlayerSlots.Keys.ToArray())
@@ -129,6 +130,8 @@ namespace FunnySnek.AntiCheat.Server
                     slot.CountDownSeconds--;
                     if (slot.CountDownSeconds <= 0)
                     {
+                        this.Monitor.Log($"Kicking player {playerID}, no code received.");
+
                         this.SendChatMessage("/color red");
                         this.SendChatMessage("You are being kicked by Anti-Cheat.");
                         this.SendChatMessage("Please install the latest Anti-Cheat client mod.");

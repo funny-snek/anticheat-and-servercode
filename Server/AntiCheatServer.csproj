@@ -57,7 +57,6 @@
   <ItemGroup>
     <Compile Include="Framework\Patch.cs" />
     <Compile Include="Framework\PatchDescriptor.cs" />
-    <Compile Include="Framework\Patches\Multiplayer_ParseServerToClientsMessage_Patcher.cs" />
     <Compile Include="Framework\Patches\Multiplayer_ProcessIncomingMessage_Patcher.cs" />
     <Compile Include="Framework\Patches\Server_SendMessage_Patcher.cs" />
     <Compile Include="Framework\PlayerSlot.cs" />

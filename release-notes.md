@@ -1,4 +1,7 @@
 # Release notes
+## Upcoming release
+* Farmhands no longer need to have SMAPI installed. (Thanks to Pathoschild!)
+
 ## 9.0
 * Pathoschild did basically a full rewrite for SMAPI 2.8 to allow serverside-only install and use.
 

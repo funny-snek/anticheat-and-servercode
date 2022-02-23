@@ -17,7 +17,7 @@ namespace FunnySnek.AntiCheat.Server
         ** Properties
         *********/
         /// <summary>The name of the blacklist file on the server.</summary>
-        private readonly string BlacklistFileName = "mod-blacklist.json";
+        private readonly string BlacklistPath = "assets/mod-blacklist.json";
 
         /// <summary>The number of seconds to wait until kicking a player (to make sure they receive the chat the message).</summary>
         private readonly int SecondsUntilKick = 5;
@@ -46,10 +46,10 @@ namespace FunnySnek.AntiCheat.Server
             helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked;
 
             // read mod blacklist
-            var blacklist = this.Helper.Data.ReadJsonFile<Dictionary<string, string[]>>(this.BlacklistFileName);
+            var blacklist = this.Helper.Data.ReadJsonFile<Dictionary<string, string[]>>(this.BlacklistPath);
             if (blacklist == null || !blacklist.Any())
             {
-                this.Monitor.Log($"The {this.BlacklistFileName} file is missing or empty; please reinstall the mod.", LogLevel.Error);
+                this.Monitor.Log($"The {this.BlacklistPath} file is missing or empty; please reinstall the mod.", LogLevel.Error);
                 return;
             }
             foreach (var entry in blacklist)
@@ -72,7 +72,7 @@ namespace FunnySnek.AntiCheat.Server
             if (Context.IsMainPlayer)
             {
                 if (!this.ProhibitedMods.Any())
-                    this.SendPublicChat($"Anti-Cheat's {this.BlacklistFileName} file is missing or empty; please reinstall the mod.", error: true);
+                    this.SendPublicChat($"Anti-Cheat's {this.BlacklistPath} file is missing or empty; please reinstall the mod.", error: true);
                 else
                     this.SendPublicChat("Anti-Cheat activated.");
             }

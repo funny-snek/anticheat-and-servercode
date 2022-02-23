@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using FunnySnek.AntiCheat.Server.Framework;
+using FunnySnek.AntiCheat.Server.Patches;
+using HarmonyLib;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -37,7 +39,15 @@ namespace FunnySnek.AntiCheat.Server
         public override void Entry(IModHelper helper)
         {
             // apply patches
-            Patch.PatchAll(this.ModManifest.UniqueID, this.Monitor);
+            Harmony harmony = new Harmony(this.ModManifest.UniqueID);
+            harmony.Patch(
+                original: AccessTools.Method(typeof(Multiplayer), nameof(Multiplayer.processIncomingMessage)) ?? throw new InvalidOperationException($"Can't apply the {nameof(MultiplayerPatcher)} patch: target method not found."),
+                prefix: new HarmonyMethod(typeof(MultiplayerPatcher), nameof(MultiplayerPatcher.Prefix))
+            );
+            harmony.Patch(
+                original: AccessTools.Method(typeof(GameServer), nameof(GameServer.sendMessage), new[] { typeof(long), typeof(OutgoingMessage) }) ?? throw new InvalidOperationException($"Can't apply the {nameof(GameServerPatcher)} patch: target method not found."),
+                prefix: new HarmonyMethod(typeof(GameServerPatcher), nameof(GameServerPatcher.Prefix))
+            );
 
             // hook events
             helper.Events.Multiplayer.PeerContextReceived += this.OnPeerContextReceived;

@@ -1,17 +1,11 @@
 ﻿using StardewValley;
 using StardewValley.Network;
 
-namespace FunnySnek.AntiCheat.Server.Framework.Patches
+namespace FunnySnek.AntiCheat.Server.Patches
 {
     /// <summary>Harmony patch for making sure no messages are received from client.</summary>
-    internal class Multiplayer_ProcessIncomingMessage_Patcher : Patch
+    internal static class MultiplayerPatcher
     {
-        /*********
-        ** Properties
-        *********/
-        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(Multiplayer), nameof(Multiplayer.processIncomingMessage));
-
-
         /*********
         ** Public methods
         *********/

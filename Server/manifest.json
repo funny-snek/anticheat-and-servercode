@@ -6,5 +6,5 @@
   "UniqueID": "FunnySnek.AntiCheatServer",
   "EntryDll": "AntiCheatServer.dll",
   "MinimumApiVersion": "2.0",
-  "UpdateKeys": []
+  "UpdateKeys": [ "Nexus:2887" ]
 }

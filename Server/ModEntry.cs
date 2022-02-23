@@ -37,7 +37,7 @@ namespace FunnySnek.AntiCheat.Server
         public override void Entry(IModHelper helper)
         {
             // apply patches
-            Patch.PatchAll(this.ModManifest.UniqueID);
+            Patch.PatchAll(this.ModManifest.UniqueID, this.Monitor);
 
             // hook events
             helper.Events.Multiplayer.PeerContextReceived += this.OnPeerContextReceived;

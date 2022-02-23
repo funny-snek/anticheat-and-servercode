@@ -2,6 +2,7 @@
 ## Upcoming release
 * Farmhands no longer need to have SMAPI installed.
 * Added update key to manifest for SMAPI update alerts.
+* Improved error-handling.
 
 ## 9.0.0
 Released 19 November 2018 for SMAPI 2.8.0 or later.

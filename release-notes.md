@@ -1,5 +1,7 @@
 # Release notes
-## Upcoming release
+## 9.1.0
+Released 23 February 2022 for SMAPI 3.13.0 or later. Updated by Pathoschild.
+
 * Farmhands no longer need to have SMAPI installed.
 * Added update key to manifest for SMAPI update alerts.
 * Improved error-handling.

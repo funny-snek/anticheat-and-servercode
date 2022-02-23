@@ -1,17 +1,10 @@
 ﻿using StardewValley;
-using StardewValley.Network;
 
-namespace FunnySnek.AntiCheat.Server.Framework.Patches
+namespace FunnySnek.AntiCheat.Server.Patches
 {
     /// <summary>Harmony patch for kick.</summary>
-    internal class Server_SendMessage_Patcher : Patch
+    internal class GameServerPatcher
     {
-        /*********
-        ** Properties
-        *********/
-        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(GameServer), "sendMessage", new System.Type[] { typeof(long), typeof(OutgoingMessage) });
-
-
         /*********
         ** Public methods
         *********/

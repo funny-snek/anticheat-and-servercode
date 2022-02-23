@@ -9,7 +9,7 @@ namespace FunnySnek.AntiCheat.Server.Framework.Patches
         /*********
         ** Properties
         *********/
-        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(GameServer), "sendMessage", new System.Type[] { typeof(long), typeof(OutgoingMessage) });
+        protected override PatchDescriptor GetPatchDescriptor() => new PatchDescriptor(typeof(GameServer), nameof(GameServer.sendMessage), new[] { typeof(long), typeof(OutgoingMessage) });
 
 
         /*********

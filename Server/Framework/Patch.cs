@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using Harmony;
+using HarmonyLib;
 using StardewModdingAPI;
 
 namespace FunnySnek.AntiCheat.Server.Framework
@@ -20,7 +20,7 @@ namespace FunnySnek.AntiCheat.Server.Framework
         *********/
         public static void PatchAll(string id, IMonitor monitor)
         {
-            HarmonyInstance harmonyInstance = HarmonyInstance.Create(id);
+            Harmony harmonyInstance = new Harmony(id);
 
             var types = (
                 from type in Assembly.GetExecutingAssembly().GetTypes()
@@ -35,30 +35,31 @@ namespace FunnySnek.AntiCheat.Server.Framework
         /*********
         ** Private methods
         *********/
-        private void ApplyPatch(HarmonyInstance harmonyInstance, IMonitor monitor)
+        private void ApplyPatch(Harmony harmonyInstance, IMonitor monitor)
         {
             var patchDescriptor = this.GetPatchDescriptor();
 
             // get target method
             MethodBase targetMethod = string.IsNullOrEmpty(patchDescriptor.TargetMethodName)
-                ? (MethodBase)patchDescriptor.TargetType.GetConstructor(patchDescriptor.TargetMethodArguments ?? new Type[0])
-                : (patchDescriptor.TargetMethodArguments != null
-                    ? patchDescriptor.TargetType.GetMethod(patchDescriptor.TargetMethodName, patchDescriptor.TargetMethodArguments)
-                    : patchDescriptor.TargetType.GetMethod(patchDescriptor.TargetMethodName, (BindingFlags)62)
-                );
+                ? AccessTools.Constructor(patchDescriptor.TargetType, patchDescriptor.TargetMethodArguments ?? Type.EmptyTypes)
+                : AccessTools.Method(patchDescriptor.TargetType, patchDescriptor.TargetMethodName, patchDescriptor.TargetMethodArguments);
             if (targetMethod == null)
             {
                 monitor.Log($"Can't apply the {this.GetType().Name} patch: required method '{patchDescriptor.TargetType?.FullName}.{patchDescriptor.TargetMethodName ?? "ctor"}' not found. The mod may not work correctly.", LogLevel.Error);
                 return;
             }
 
+            // get patch methods
+            MethodInfo prefix = AccessTools.Method(this.GetType(), "Prefix");
+            MethodInfo postfix = AccessTools.Method(this.GetType(), "Postfix");
+
             // apply patches
             try
             {
                 harmonyInstance.Patch(
                     original: targetMethod,
-                    prefix: new HarmonyMethod(this.GetType().GetMethod("Prefix")),
-                    postfix: new HarmonyMethod(this.GetType().GetMethod("Postfix"))
+                    prefix: prefix != null ? new HarmonyMethod(prefix) : null,
+                    postfix: postfix != null ? new HarmonyMethod(postfix) : null
                 );
             }
             catch (Exception ex)

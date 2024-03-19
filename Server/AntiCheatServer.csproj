@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RootNamespace>FunnySnek.AntiCheat.Server</RootNamespace>
-    <Version>9.1.0</Version>
+    <Version>9.1.1</Version>
     <TargetFramework>net6.0</TargetFramework>
 
     <EnableHarmony>true</EnableHarmony>

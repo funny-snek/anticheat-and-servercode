@@ -76,7 +76,7 @@ namespace FunnySnek.AntiCheat.Server
         /// <summary>Raised after the player loads a save slot.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
-        private void SaveLoaded(object sender, SaveLoadedEventArgs e)
+        private void SaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
             this.PlayersToKick.Clear();
             if (Context.IsMainPlayer)
@@ -91,7 +91,7 @@ namespace FunnySnek.AntiCheat.Server
         /// <summary>Raised after the mod context for a peer is received. This happens before the game approves the connection, so the player doesn't yet exist in the game.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
-        private void OnPeerContextReceived(object sender, PeerContextReceivedEventArgs e)
+        private void OnPeerContextReceived(object? sender, PeerContextReceivedEventArgs e)
         {
             if (!Context.IsMainPlayer)
                 return;
@@ -110,12 +110,9 @@ namespace FunnySnek.AntiCheat.Server
                 if (blockedModNames.Any())
                 {
                     this.Monitor.Log($"   Will kick in {this.SecondsUntilKick} seconds: found prohibited mods {string.Join(", ", blockedModNames)}.");
-                    this.PlayersToKick.Add(new PlayerSlot
-                    {
-                        Peer = e.Peer,
-                        CountDownSeconds = this.SecondsUntilKick,
-                        BlockedModNames = blockedModNames
-                    });
+                    this.PlayersToKick.Add(
+                        new PlayerSlot(e.Peer, blockedModNames, this.SecondsUntilKick)
+                    );
                     return;
                 }
             }
@@ -127,7 +124,7 @@ namespace FunnySnek.AntiCheat.Server
         /// <summary>Raised after the connection with a peer is severed.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
-        private void OnPeerDisconnected(object sender, PeerDisconnectedEventArgs e)
+        private void OnPeerDisconnected(object? sender, PeerDisconnectedEventArgs e)
         {
             if (!Context.IsMainPlayer)
                 return;
@@ -138,7 +135,7 @@ namespace FunnySnek.AntiCheat.Server
         /// <summary>Raised after the game state is updated (≈60 times per second).</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
-        private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
+        private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
         {
             if (!Context.IsMainPlayer || !Context.IsWorldReady || !e.IsOneSecond)
                 return;

@@ -1,4 +1,7 @@
 # Release notes
+## Upcoming release
+* Internal changes to simplify maintenance.
+
 ## 9.1.1
 Released 19 March 2024 for SMAPI 4.0.0 or later. Updated by Pathoschild.
 

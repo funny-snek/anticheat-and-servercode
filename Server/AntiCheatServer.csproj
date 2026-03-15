@@ -3,6 +3,7 @@
     <RootNamespace>FunnySnek.AntiCheat.Server</RootNamespace>
     <Version>9.1.1</Version>
     <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
 
     <EnableHarmony>true</EnableHarmony>
   </PropertyGroup>

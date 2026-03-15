@@ -10,7 +10,7 @@ namespace FunnySnek.AntiCheat.Server.Patches
         *********/
         public static bool Prefix(long peerId)
         {
-            if (Game1.IsServer && (!Game1.otherFarmers.ContainsKey(peerId)))
+            if (Game1.IsServer && !Game1.otherFarmers.ContainsKey(peerId))
             {
                 //They have been kicked off the server
                 return false;

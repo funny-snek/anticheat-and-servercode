@@ -9,7 +9,7 @@ namespace FunnySnek.AntiCheat.Server.Patches
         /*********
         ** Public methods
         *********/
-        public static bool Prefix(IncomingMessage msg)
+        public static bool Prefix(IncomingMessage? msg)
         {
             if (Game1.IsServer && (msg == null || !Game1.otherFarmers.ContainsKey(msg.FarmerID)))
             {

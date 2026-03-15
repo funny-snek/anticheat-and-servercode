@@ -5,5 +5,9 @@
     <File Path="LICENSE" />
     <File Path="release-notes.md" />
   </Folder>
+  <Folder Name="/.root/.github/" />
+  <Folder Name="/.root/.github/workflow/">
+    <File Path=".github/workflows/build.yml" />
+  </Folder>
   <Project Path="Server/AntiCheatServer.csproj" />
 </Solution>

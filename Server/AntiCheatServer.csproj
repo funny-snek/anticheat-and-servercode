@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
 
     <EnableHarmony>true</EnableHarmony>
+    <ModZipPath>$(SolutionDir)\_releases</ModZipPath>
   </PropertyGroup>
 
   <ItemGroup>
